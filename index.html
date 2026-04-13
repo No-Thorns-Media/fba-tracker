@@ -335,7 +335,7 @@ const FIREBASE_CONFIG = {
 let reportHistory = []; // array of snapshots, newest first, max 3
 let changeLog = []; // computed differences between reports
 
-const RAW = []; // Will be populated from Firebase or empty
+const RAW = [{"sheet": "FUN", "product": "mind the gap", "type": "Sticker (Single)", "asin": "B0CB8R4755", "status": "FBA", "qty": 0, "inbound": 0, "sku": "PF64a6b0325cfffV1-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Sticker (2-Pack)", "asin": "B0FDGG4C7B", "status": "FBA", "qty": 0, "inbound": 0, "sku": "6C9-IZHO-EDG7-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Magnet (2-Pack)", "asin": "B0DJZNPS7Q", "status": "FBA", "qty": 24, "inbound": 25, "sku": "E4S-PRDP-533Y-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Patch (Single)", "asin": "B0F99TJ8T6", "status": "FBA", "qty": 73, "inbound": 0, "sku": "DGM-M9L4-299F-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Mug 11 White", "asin": "B0FC6YVBQG", "status": "FBA/MFN", "qty": null, "inbound": null, "sku": ""}, {"sheet": "FUN", "product": "mind the gap", "type": "Mug 11 Black", "asin": "B0FC6BBBCD", "status": "FBA/MFN", "qty": 12, "inbound": 0, "sku": "SJ1-JV3Z-6S7C-FBA"}]; // TRUNCATED — full data loads from Firebase
 
 let firebaseReady = false;
 let dbRef = null;
@@ -605,24 +605,47 @@ const CL = ['#4f8ef7','#00d4a0','#ff9f43','#a77bfa','#f7576c','#38bdf8','#fbbf24
 
 async function init() {
   document.getElementById('s-tot').textContent = '…';
+  document.getElementById('hsub-text').textContent = 'Connecting to cloud…';
   const fbOk = await initFirebase();
+  console.log('Firebase init:', fbOk);
   if (fbOk) {
-    const fbData = await loadFromFirebase();
-    if (fbData && fbData.length > 0) {
-      D = fbData;
-      const meta = await loadMeta();
-      if (meta && meta.lastUpdated) {
-        const d = new Date(meta.lastUpdated);
-        document.getElementById('hsub-text').textContent = `Last updated: ${d.toLocaleDateString()} ${d.toLocaleTimeString()} · ${D.length} items`;
+    try {
+      document.getElementById('hsub-text').textContent = 'Loading data from cloud…';
+      const fbData = await loadFromFirebase();
+      console.log('Firebase data loaded:', fbData ? fbData.length : 'null');
+      if (fbData && fbData.length > 0) {
+        D = fbData;
+        const meta = await loadMeta();
+        if (meta && meta.lastUpdated) {
+          const d = new Date(meta.lastUpdated);
+          document.getElementById('hsub-text').textContent = `Last updated: ${d.toLocaleDateString()} ${d.toLocaleTimeString()} · ${D.length} items`;
+        } else {
+          document.getElementById('hsub-text').textContent = `Loaded ${D.length} items from cloud`;
+        }
+        toast('Loaded from cloud: ' + D.length + ' items');
+      } else {
+        console.log('No data in Firebase');
+        document.getElementById('hsub-text').textContent = 'No data in cloud — upload files to start';
       }
-      toast('Loaded from cloud: ' + D.length + ' items');
+      // Load report history
+      reportHistory = await loadReportHistory();
+      console.log('Report history loaded:', reportHistory.length, 'snapshots');
+      computeAllChanges();
+      updateTimeline();
+    } catch(err) {
+      console.error('Init load error:', err);
+      document.getElementById('hsub-text').textContent = 'Cloud error — upload files to reload data';
+      toast('Cloud error: ' + err.message);
     }
-    // Load report history
-    reportHistory = await loadReportHistory();
-    computeAllChanges();
-    updateTimeline();
+  } else {
+    document.getElementById('hsub-text').textContent = 'Firebase unavailable — upload files to start';
   }
-  if (!D.length) D = [];
+  // Fallback to RAW if nothing loaded
+  if (!D.length && RAW.length) {
+    D = [...RAW];
+    console.log('Using RAW fallback:', D.length, 'items');
+    document.getElementById('hsub-text').textContent = `Fallback data: ${D.length} items — upload fresh reports`;
+  }
   popF(); upS(); apply(); upTabs();
 }
 
@@ -1159,5 +1182,6 @@ document.getElementById('f-type').addEventListener('change', () => apply());
 document.getElementById('f-status').addEventListener('change', () => apply());
 init();
 </script>
+<script type="module" src="auth.js"></script>
 </body>
 </html>
