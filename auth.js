@@ -1,10 +1,7 @@
 // auth.js — ES Module авторизация для FBA Tracker
-// Подключение: <script type="module" src="auth.js"></script> — ПЕРЕД закрывающим </body>
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// ─── Конфигурация (такая же как в index.html) ───
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyB08-RZU489mHZagucU7fXPjLfnWASr690",
   authDomain: "fba-tracker-1ae08.firebaseapp.com",
@@ -18,11 +15,18 @@ const FIREBASE_CONFIG = {
 const app = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(app);
 
-// ─── Скрыть всё приложение сразу ───
-document.querySelectorAll('.tabs, .panel, .kbar, header, .ubar, .ctrl, .af, .mismatch-bar, .pw, .tw, .toast')
-  .forEach(el => el.style.display = 'none');
+// ─── Добавить CSS для скрытия ───
+const style = document.createElement('style');
+style.textContent = `
+  body.auth-locked > *:not(#login-screen):not(script) { display: none !important; }
+  body.auth-locked > #login-screen { display: flex !important; }
+`;
+document.head.appendChild(style);
 
-// ─── Создать экран входа ───
+// Сразу заблокировать
+document.body.classList.add('auth-locked');
+
+// ─── Экран входа ───
 function showLogin() {
   if (document.getElementById('login-screen')) return;
 
@@ -48,7 +52,6 @@ function showLogin() {
 
   document.getElementById('login-btn').addEventListener('click', doLogin);
   overlay.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-
   setTimeout(() => document.getElementById('login-email').focus(), 100);
 }
 
@@ -74,7 +77,7 @@ function doLogin() {
         'auth/user-not-found': '\u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044C \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D',
         'auth/wrong-password': '\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u043F\u0430\u0440\u043E\u043B\u044C',
         'auth/invalid-email': '\u041D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u044B\u0439 email',
-        'auth/too-many-requests': '\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u043D\u043E\u0433\u043E \u043F\u043E\u043F\u044B\u0442\u043E\u043A. \u041F\u043E\u0434\u043E\u0436\u0434\u0438\u0442\u0435',
+        'auth/too-many-requests': '\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u043D\u043E\u0433\u043E \u043F\u043E\u043F\u044B\u0442\u043E\u043A',
         'auth/invalid-credential': '\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 email \u0438\u043B\u0438 \u043F\u0430\u0440\u043E\u043B\u044C',
         'auth/network-request-failed': '\u041E\u0448\u0438\u0431\u043A\u0430 \u0441\u0435\u0442\u0438',
       };
@@ -82,13 +85,11 @@ function doLogin() {
     });
 }
 
-// ─── Показать / скрыть приложение ───
+// ─── Показать / скрыть ───
 function showApp() {
+  document.body.classList.remove('auth-locked');
   const login = document.getElementById('login-screen');
   if (login) login.remove();
-
-  document.querySelectorAll('.tabs, .panel.on, .kbar, header, .ubar, .ctrl, .af, .pw, .tw, .toast')
-    .forEach(el => el.style.display = '');
 
   if (!document.getElementById('logout-btn')) {
     const btn = document.createElement('button');
@@ -103,13 +104,12 @@ function showApp() {
 }
 
 function hideApp() {
-  document.querySelectorAll('.tabs, .panel, .kbar, header, .ubar, .ctrl, .af, .mismatch-bar, .pw, .tw')
-    .forEach(el => el.style.display = 'none');
+  document.body.classList.add('auth-locked');
   const btn = document.getElementById('logout-btn');
   if (btn) btn.remove();
 }
 
-// ─── Слушатель состояния авторизации ───
+// ─── Слушатель авторизации ───
 onAuthStateChanged(auth, (user) => {
   if (user) {
     console.log('\u2705 \u0412\u0445\u043E\u0434:', user.email);
