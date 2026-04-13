@@ -410,6 +410,31 @@ async function saveReportHistory(history) {
   } catch(err) { console.error("Save history error:", err); }
 }
 
+// ── Amazon Map Persistence (for Health Check) ──
+async function saveAmazonMap(map, date) {
+  if (!firebaseReady) return;
+  try {
+    await dbRef.set(dbRef.ref(dbRef.db, 'inventory/amazonMap'), {
+      data: map,
+      date: date
+    });
+    console.log('Amazon map saved:', Object.keys(map).length, 'ASINs');
+  } catch(err) { console.error("Save amazonMap error:", err); }
+}
+
+async function loadAmazonMap() {
+  if (!firebaseReady) return null;
+  try {
+    const snap = await dbRef.get(dbRef.ref(dbRef.db, 'inventory/amazonMap'));
+    if (snap.exists()) {
+      const val = snap.val();
+      console.log('Amazon map loaded from cloud');
+      return val;
+    }
+  } catch(err) { console.error("Load amazonMap error:", err); }
+  return null;
+}
+
 function createStockSnapshot(data, source) {
   const stockMap = {};
   data.forEach(d => {
@@ -632,6 +657,14 @@ async function init() {
       console.log('Report history loaded:', reportHistory.length, 'snapshots');
       computeAllChanges();
       updateTimeline();
+
+      // Load amazonMap for Health Check persistence
+      const savedAmazonMap = await loadAmazonMap();
+      if (savedAmazonMap && savedAmazonMap.data) {
+        window._amazonMap = savedAmazonMap.data;
+        window._amazonReportDate = savedAmazonMap.date;
+        console.log('Amazon map restored:', Object.keys(savedAmazonMap.data).length, 'ASINs');
+      }
     } catch(err) {
       console.error('Init load error:', err);
       document.getElementById('hsub-text').textContent = 'Cloud error — upload files to reload data';
@@ -835,6 +868,9 @@ function uploadStock(input) {
       window._amazonMap = newMap;
       window._amazonReportDate = new Date().toISOString();
 
+      // Save amazonMap to Firebase for persistence across page reloads
+      await saveAmazonMap(newMap, window._amazonReportDate);
+
       let m = 0;
       D.forEach(d => {
         const n = newMap[d.asin];
@@ -951,7 +987,7 @@ function renderRestock() {
   if (rR) return; rR = true;
   const c = document.getElementById('restock-content');
   const wq = D.filter(d => d.qty != null);
-  const oosNeedReorder = wq.filter(d => d.qty === 0 && (!d.inbound || d.inbound === 0)).sort((a, b) => a.product.localeCompare(b.product));
+  const oosNeedReorder = wq.filter(d => d.qty === 0 && (!d.inbound || d.inbound === 0)).sort((a, b) => (a.product||'').localeCompare(b.product||''));
   const oosInTransit = wq.filter(d => d.qty === 0 && d.inbound > 0).sort((a, b) => b.inbound - a.inbound);
   const low = wq.filter(d => d.qty > 0 && d.qty < 10).sort((a, b) => a.qty - b.qty);
   const totalOOS = oosNeedReorder.length + oosInTransit.length;
@@ -959,20 +995,30 @@ function renderRestock() {
   if (oosNeedReorder.length) {
     h += `<div class="rcard" style="border-color:var(--dnbd)"><h3 class="oos-h">🚨 Need Reorder — ${oosNeedReorder.length} items</h3><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Category</th><th>Status</th></tr></thead><tbody>`;
     oosNeedReorder.forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="cat">${esc(d.sheet)}</span></td><td><span class="badge ${bCls(d.status)}">${d.status}</span></td></tr>`; });
-    h += `</tbody></table></div>`;
+    h += `</tbody></table><button class="rbtn" onclick="exportRestock('reorder')">Export Reorder list as CSV</button></div>`;
   }
   if (oosInTransit.length) {
     h += `<div class="rcard" style="border-color:var(--acbd)"><h3 style="color:var(--ac)">📦 In Transit — ${oosInTransit.length} items</h3><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Category</th><th class="num">Inbound</th></tr></thead><tbody>`;
     oosInTransit.forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="cat">${esc(d.sheet)}</span></td><td class="num" style="color:var(--ac);font-weight:600">${d.inbound}</td></tr>`; });
-    h += `</tbody></table></div>`;
+    h += `</tbody></table><button class="rbtn" onclick="exportRestock('transit')">Export In Transit list as CSV</button></div>`;
   }
   if (low.length) {
     h += `<div class="rcard"><h3 class="low-h">⚡ Low Stock — ${low.length} items (&lt;10 units)</h3><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Category</th><th class="num">Stock</th><th class="num">Inbound</th></tr></thead><tbody>`;
     low.forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="cat">${esc(d.sheet)}</span></td><td class="num" style="color:var(--mfn)">${d.qty}</td><td class="num" style="color:${d.inbound > 0 ? 'var(--ac)' : 'var(--bdl)'}">${d.inbound || 0}</td></tr>`; });
-    h += `</tbody></table></div>`;
+    h += `</tbody></table><button class="rbtn" onclick="exportRestock('low')">Export Low Stock list as CSV</button></div>`;
   }
   if (!totalOOS && !low.length) h += `<div class="empty">All items are well-stocked!</div>`;
   c.innerHTML = h;
+}
+function exportRestock(type){
+  const wq=D.filter(d=>d.qty!=null);
+  let items;
+  if(type==='reorder') items=wq.filter(d=>d.qty===0&&(!d.inbound||d.inbound===0));
+  else if(type==='transit') items=wq.filter(d=>d.qty===0&&d.inbound>0);
+  else items=wq.filter(d=>d.qty>0&&d.qty<10);
+  let h='Product,Type,ASIN,Status,Category,Stock,Inbound\n';
+  const rows=items.map(d=>`"${(d.product||'').replace(/"/g,'""')}","${d.type}","${d.asin}","${d.status}","${d.sheet}",${d.qty},${d.inbound||0}`).join('\n');
+  const b=new Blob([h+rows],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`restock_${type}_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast(`Exported ${items.length} items`);
 }
 
 // ═══════════════════════════════════════════
@@ -981,32 +1027,32 @@ function renderRestock() {
 let cR = false;
 function renderConflicts() {
   if (cR) return; cR = true;
-  const c = document.getElementById('conflicts-content');
+  const cont = document.getElementById('conflicts-content');
 
   if (changeLog.length === 0) {
-    c.innerHTML = `<h2>Report Changes</h2><div class="rsub">Upload at least 2 stock reports to see changes between them. The system stores up to 3 snapshots and compares them automatically.</div><div class="empty">No report history yet — upload your first stock report to start tracking changes.</div>`;
+    cont.innerHTML = `<h2>Report Changes</h2><div class="rsub">Upload at least 2 stock reports to see changes between them. The system stores up to 3 snapshots and compares them automatically.</div><div class="empty">No report history yet — upload your first stock report to start tracking changes.</div>`;
     return;
   }
 
   let h = `<h2>Report Changes</h2><div class="rsub">Comparing ${reportHistory.length} snapshots · Changes are detected automatically when you upload new reports</div>`;
 
-  // Summary cards
+  // Summary cards for latest comparison
   if (changeLog.length > 0) {
     const latest = changeLog[0];
-    const wentOos = latest.changes.filter(c => c.type === 'changed' && c.diffs.some(d => d.field === 'went_oos'));
-    const backInStock = latest.changes.filter(c => c.type === 'changed' && c.diffs.some(d => d.field === 'back_in_stock'));
-    const stockDown = latest.changes.filter(c => c.type === 'changed' && c.diffs.some(d => d.field === 'stock' && d.delta < 0));
-    const stockUp = latest.changes.filter(c => c.type === 'changed' && c.diffs.some(d => d.field === 'stock' && d.delta > 0));
-    const newAsins = latest.changes.filter(c => c.type === 'new_asin');
-    const removedAsins = latest.changes.filter(c => c.type === 'removed_asin');
+    const wentOos = latest.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'went_oos'));
+    const backInStock = latest.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'back_in_stock'));
+    const stockDown = latest.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'stock' && df.delta < 0));
+    const stockUp = latest.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'stock' && df.delta > 0));
+    const newAs = latest.changes.filter(ch => ch.type === 'new_asin');
+    const removedAs = latest.changes.filter(ch => ch.type === 'removed_asin');
 
     h += `<div class="ss">
       <div class="ssc"><div class="ssc-v" style="color:var(--dn)">${wentOos.length}</div><div class="ssc-l">Went OOS</div></div>
       <div class="ssc"><div class="ssc-v" style="color:var(--fba)">${backInStock.length}</div><div class="ssc-l">Back in Stock</div></div>
       <div class="ssc"><div class="ssc-v" style="color:var(--mfn)">${stockDown.length}</div><div class="ssc-l">Stock Decreased</div></div>
       <div class="ssc"><div class="ssc-v" style="color:var(--ac)">${stockUp.length}</div><div class="ssc-l">Stock Increased</div></div>
-      <div class="ssc"><div class="ssc-v" style="color:var(--pp)">${newAsins.length}</div><div class="ssc-l">New ASINs</div></div>
-      <div class="ssc"><div class="ssc-v" style="color:var(--dn)">${removedAsins.length}</div><div class="ssc-l">Removed ASINs</div></div>
+      <div class="ssc"><div class="ssc-v" style="color:var(--pp)">${newAs.length}</div><div class="ssc-l">New ASINs</div></div>
+      <div class="ssc"><div class="ssc-v" style="color:var(--dn)">${removedAs.length}</div><div class="ssc-l">Removed ASINs</div></div>
     </div>`;
   }
 
@@ -1027,19 +1073,19 @@ function renderConflicts() {
     h += `<p style="font-size:10px;color:var(--m);margin-bottom:12px">${fromStr} → ${toStr}</p>`;
 
     // Group changes by type
-    const wentOos = log.changes.filter(c => c.type === 'changed' && c.diffs.some(d => d.field === 'went_oos'));
-    const backInStock = log.changes.filter(c => c.type === 'changed' && c.diffs.some(d => d.field === 'back_in_stock'));
-    const stockChanges = log.changes.filter(c => c.type === 'changed' && c.diffs.some(d => d.field === 'stock') && !c.diffs.some(d => d.field === 'went_oos' || d.field === 'back_in_stock'));
-    const statusChanges = log.changes.filter(c => c.type === 'changed' && c.diffs.some(d => d.field === 'status'));
-    const newAsins = log.changes.filter(c => c.type === 'new_asin');
-    const removedAsins = log.changes.filter(c => c.type === 'removed_asin');
+    const wentOos = log.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'went_oos'));
+    const backInStock = log.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'back_in_stock'));
+    const stockChanges = log.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'stock') && !ch.diffs.some(df => df.field === 'went_oos' || df.field === 'back_in_stock'));
+    const statusChanges = log.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'status'));
+    const newAsins = log.changes.filter(ch => ch.type === 'new_asin');
+    const removedAsins = log.changes.filter(ch => ch.type === 'removed_asin');
 
     // Went OOS
     if (wentOos.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--dn);font-size:10px">🚨 WENT OUT OF STOCK — ${wentOos.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Before</th><th style="text-align:right">Now</th></tr></thead><tbody>`;
-      wentOos.slice(0, 30).forEach(c => {
-        const d = c.diffs.find(d => d.field === 'went_oos') || c.diffs.find(d => d.field === 'stock');
-        h += `<tr><td>${esc(c.product)}</td><td style="font-size:10px;color:var(--td)">${esc(c.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${c.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${c.asin}</a></td><td class="delta-down" style="text-align:right">${d ? d.from : '?'}</td><td style="text-align:right;color:var(--dn);font-weight:700;font-family:IBM Plex Mono">0</td></tr>`;
+      wentOos.slice(0, 50).forEach(ch => {
+        const df = ch.diffs.find(x => x.field === 'went_oos') || ch.diffs.find(x => x.field === 'stock');
+        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${ch.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${ch.asin}</a></td><td class="delta-down" style="text-align:right">${df ? df.from : '?'}</td><td style="text-align:right;color:var(--dn);font-weight:700;font-family:IBM Plex Mono">0</td></tr>`;
       });
       h += `</tbody></table></div>`;
     }
@@ -1047,9 +1093,9 @@ function renderConflicts() {
     // Back in stock
     if (backInStock.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--fba);font-size:10px">✅ BACK IN STOCK — ${backInStock.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Now</th></tr></thead><tbody>`;
-      backInStock.slice(0, 30).forEach(c => {
-        const d = c.diffs.find(d => d.field === 'back_in_stock') || c.diffs.find(d => d.field === 'stock');
-        h += `<tr><td>${esc(c.product)}</td><td style="font-size:10px;color:var(--td)">${esc(c.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${c.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${c.asin}</a></td><td class="delta-up" style="text-align:right">${d ? d.to : '?'}</td></tr>`;
+      backInStock.slice(0, 50).forEach(ch => {
+        const df = ch.diffs.find(x => x.field === 'back_in_stock') || ch.diffs.find(x => x.field === 'stock');
+        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${ch.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${ch.asin}</a></td><td class="delta-up" style="text-align:right">${df ? df.to : '?'}</td></tr>`;
       });
       h += `</tbody></table></div>`;
     }
@@ -1058,14 +1104,14 @@ function renderConflicts() {
     if (stockChanges.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--mfn);font-size:10px">📊 STOCK CHANGES — ${stockChanges.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Before</th><th style="text-align:right">Now</th><th style="text-align:right">Δ</th></tr></thead><tbody>`;
       stockChanges.sort((a, b) => {
-        const da = a.diffs.find(d => d.field === 'stock'); const db = b.diffs.find(d => d.field === 'stock');
+        const da = a.diffs.find(x => x.field === 'stock'); const db = b.diffs.find(x => x.field === 'stock');
         return (da ? da.delta : 0) - (db ? db.delta : 0);
-      }).slice(0, 50).forEach(c => {
-        const d = c.diffs.find(d => d.field === 'stock');
-        if (!d) return;
-        const cls = d.delta > 0 ? 'delta-up' : 'delta-down';
-        const sign = d.delta > 0 ? '+' : '';
-        h += `<tr><td>${esc(c.product)}</td><td style="font-size:10px;color:var(--td)">${esc(c.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px">${c.asin}</td><td style="text-align:right;font-family:IBM Plex Mono;color:var(--m)">${d.from}</td><td style="text-align:right;font-family:IBM Plex Mono">${d.to}</td><td class="${cls}" style="text-align:right">${sign}${d.delta}</td></tr>`;
+      }).slice(0, 50).forEach(ch => {
+        const df = ch.diffs.find(x => x.field === 'stock');
+        if (!df) return;
+        const cls = df.delta > 0 ? 'delta-up' : 'delta-down';
+        const sign = df.delta > 0 ? '+' : '';
+        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px">${ch.asin}</td><td style="text-align:right;font-family:IBM Plex Mono;color:var(--m)">${df.from}</td><td style="text-align:right;font-family:IBM Plex Mono">${df.to}</td><td class="${cls}" style="text-align:right">${sign}${df.delta}</td></tr>`;
       });
       h += `</tbody></table></div>`;
     }
@@ -1073,10 +1119,10 @@ function renderConflicts() {
     // Status changes
     if (statusChanges.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--pp);font-size:10px">🔄 STATUS CHANGES — ${statusChanges.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Before</th><th>Now</th></tr></thead><tbody>`;
-      statusChanges.slice(0, 30).forEach(c => {
-        const d = c.diffs.find(d => d.field === 'status');
-        if (!d) return;
-        h += `<tr><td>${esc(c.product)}</td><td style="font-size:10px;color:var(--td)">${esc(c.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px">${c.asin}</td><td><span class="badge ${bCls(d.from)}">${d.from}</span></td><td><span class="badge ${bCls(d.to)}">${d.to}</span></td></tr>`;
+      statusChanges.slice(0, 30).forEach(ch => {
+        const df = ch.diffs.find(x => x.field === 'status');
+        if (!df) return;
+        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px">${ch.asin}</td><td><span class="badge ${bCls(df.from)}">${df.from}</span></td><td><span class="badge ${bCls(df.to)}">${df.to}</span></td></tr>`;
       });
       h += `</tbody></table></div>`;
     }
@@ -1084,8 +1130,8 @@ function renderConflicts() {
     // New ASINs
     if (newAsins.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--ac);font-size:10px">🆕 NEW ASINS — ${newAsins.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Stock</th></tr></thead><tbody>`;
-      newAsins.slice(0, 30).forEach(c => {
-        h += `<tr><td>${esc(c.product)}</td><td style="font-size:10px;color:var(--td)">${esc(c.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${c.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${c.asin}</a></td><td class="delta-new" style="text-align:right">${c.qty != null ? c.qty : '—'}</td></tr>`;
+      newAsins.slice(0, 50).forEach(ch => {
+        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${ch.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${ch.asin}</a></td><td class="delta-new" style="text-align:right">${ch.qty != null ? ch.qty : '—'}</td></tr>`;
       });
       h += `</tbody></table></div>`;
     }
@@ -1093,8 +1139,8 @@ function renderConflicts() {
     // Removed ASINs
     if (removedAsins.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--dn);font-size:10px">❌ REMOVED ASINS — ${removedAsins.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Had Stock</th></tr></thead><tbody>`;
-      removedAsins.slice(0, 30).forEach(c => {
-        h += `<tr><td>${esc(c.product)}</td><td style="font-size:10px;color:var(--td)">${esc(c.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px" class="delta-gone">${c.asin}</td><td style="text-align:right;font-family:IBM Plex Mono;color:var(--m)">${c.prevQty != null ? c.prevQty : '—'}</td></tr>`;
+      removedAsins.slice(0, 50).forEach(ch => {
+        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px" class="delta-gone">${ch.asin}</td><td style="text-align:right;font-family:IBM Plex Mono;color:var(--m)">${ch.prevQty != null ? ch.prevQty : '—'}</td></tr>`;
       });
       h += `</tbody></table></div>`;
     }
@@ -1102,37 +1148,103 @@ function renderConflicts() {
     h += `</div>`; // close ccard
   });
 
-  c.innerHTML = h;
+  // Export all changes button
+  if (changeLog.length > 0 && changeLog[0].changes.length > 0) {
+    h += `<button class="rbtn" onclick="exportChanges()">Export all changes as CSV</button>`;
+  }
+
+  cont.innerHTML = h;
+}
+function exportChanges(){
+  if(!changeLog.length||!changeLog[0].changes.length)return;
+  const ch=changeLog[0].changes;
+  let csv='Type,Product,ItemType,ASIN,Field,From,To,Delta\n';
+  ch.forEach(c=>{
+    if(c.type==='new_asin') csv+=`"New","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","—","—","${c.qty!=null?c.qty:''}",""\n`;
+    else if(c.type==='removed_asin') csv+=`"Removed","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","—","${c.prevQty!=null?c.prevQty:''}","—",""\n`;
+    else if(c.type==='changed') c.diffs.forEach(d=>{ csv+=`"Changed","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","${d.field}","${d.from!=null?d.from:''}","${d.to!=null?d.to:''}","${d.delta!=null?d.delta:''}"\n`; });
+  });
+  const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`changes_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast(`Exported ${ch.length} changes`);
 }
 
 // ── Health Check ──
 let hR = false;
 function renderHealth() {
   if (hR) return; hR = true;
-  const c = document.getElementById('health-content');
+  const cont = document.getElementById('health-content');
   const am = window._amazonMap;
-  if (!am) { c.innerHTML = `<h2>Health Check</h2><div class="rsub">Upload an Amazon stock report first to run the audit.</div>`; return; }
+  if (!am) {
+    cont.innerHTML = `<h2>Health Check</h2><div class="rsub">Upload an Amazon stock report first to run the audit.</div><div class="empty">No Amazon report data available. Upload a Stock Report (.txt/.tsv) to enable the health check.</div>`;
+    hR = false; // allow re-render when amazonMap becomes available
+    return;
+  }
+  if (!D.length) {
+    cont.innerHTML = `<h2>Health Check</h2><div class="rsub">Upload a Listings file first.</div>`;
+    hR = false;
+    return;
+  }
   const listingAsins = new Set(D.map(d => d.asin));
   const amazonAsins = new Set(Object.keys(am));
   const inSheetsOnly = D.filter(d => !amazonAsins.has(d.asin));
-  const inAmazonOnly = Object.entries(am).filter(([a]) => !listingAsins.has(a)).map(([a, info]) => ({ asin: a, ...info }));
-  const issues = inSheetsOnly.length + inAmazonOnly.length;
+  const inAmazonOnly = Object.entries(am).filter(([a]) => !listingAsins.has(a)).map(([a, info]) => ({ asin: a, ...(typeof info === 'object' ? info : {qty:0}) }));
+
+  // Variant count mismatch
+  const sheetProdCount = {}; D.forEach(d => { sheetProdCount[d.product] = (sheetProdCount[d.product] || 0) + 1; });
+  const asinToProduct = {}; D.forEach(d => { asinToProduct[d.asin] = d.product; });
+  const amazonProdCount = {}; Object.keys(am).forEach(a => { const p = asinToProduct[a]; if (p) amazonProdCount[p] = (amazonProdCount[p] || 0) + 1; });
+  const variantMismatch = [];
+  Object.keys(sheetProdCount).forEach(p => {
+    const sc = sheetProdCount[p]; const ac = amazonProdCount[p] || 0;
+    if (sc !== ac) variantMismatch.push({ product: p, sheets: sc, amazon: ac, diff: sc - ac });
+  });
+  variantMismatch.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+  const issues = inSheetsOnly.length + inAmazonOnly.length + variantMismatch.length;
   document.getElementById('hc').textContent = issues || '✓';
   if (issues > 0) document.getElementById('t-health').classList.add('alert');
-  let h = `<h2>Health Check</h2><div class="rsub">Audit: Sheets vs Amazon · ${issues} issues found</div>`;
-  h += `<div class="ss"><div class="ssc"><div class="ssc-v" style="color:${inSheetsOnly.length ? 'var(--dn)' : 'var(--fba)'}">${inSheetsOnly.length}</div><div class="ssc-l">In Sheets, not on Amazon</div></div><div class="ssc"><div class="ssc-v" style="color:${inAmazonOnly.length ? 'var(--yl)' : 'var(--fba)'}">${inAmazonOnly.length}</div><div class="ssc-l">On Amazon, not in Sheets</div></div></div>`;
+
+  const reportDate = window._amazonReportDate ? new Date(window._amazonReportDate).toLocaleDateString() : '';
+  let h = `<h2>Health Check</h2><div class="rsub">Audit: Sheets vs Amazon · ${issues} issues found${reportDate ? ' · Report: '+reportDate : ''}</div>`;
+  h += `<div class="ss">
+    <div class="ssc"><div class="ssc-v" style="color:${inSheetsOnly.length ? 'var(--dn)' : 'var(--fba)'}">${inSheetsOnly.length}</div><div class="ssc-l">In Sheets, not on Amazon</div></div>
+    <div class="ssc"><div class="ssc-v" style="color:${inAmazonOnly.length ? 'var(--yl)' : 'var(--fba)'}">${inAmazonOnly.length}</div><div class="ssc-l">On Amazon, not in Sheets</div></div>
+    <div class="ssc"><div class="ssc-v" style="color:${variantMismatch.length ? 'var(--mfn)' : 'var(--fba)'}">${variantMismatch.length}</div><div class="ssc-l">Variant Mismatches</div></div>
+  </div>`;
+
   if (inSheetsOnly.length) {
-    h += `<div class="rcard" style="border-color:var(--dnbd)"><h3 class="oos-h">In Sheets but NOT on Amazon — ${inSheetsOnly.length}</h3><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Status</th></tr></thead><tbody>`;
-    inSheetsOnly.slice(0, 50).forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px">${d.asin}</td><td><span class="badge ${bCls(d.status)}">${d.status}</span></td></tr>`; });
-    h += `</tbody></table></div>`;
+    h += `<div class="rcard" style="border-color:var(--dnbd)"><h3 class="oos-h">In Sheets but NOT on Amazon — ${inSheetsOnly.length}</h3><p style="font-size:10px;color:var(--td);margin-bottom:8px">These ASINs may have been deactivated, deleted, or suppressed on Amazon.</p><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Status</th><th>Category</th></tr></thead><tbody>`;
+    inSheetsOnly.slice(0, 50).forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="badge ${bCls(d.status)}">${d.status}</span></td><td><span class="cat">${esc(d.sheet)}</span></td></tr>`; });
+    if (inSheetsOnly.length > 50) h += `<tr><td colspan="5" style="color:var(--m);text-align:center">…and ${inSheetsOnly.length - 50} more</td></tr>`;
+    h += `</tbody></table><button class="rbtn" onclick="exportHealth('sheets_only')">Export list as CSV</button></div>`;
   }
   if (inAmazonOnly.length) {
-    h += `<div class="rcard" style="border-color:var(--ylbd)"><h3 style="color:var(--yl)">On Amazon but NOT in Sheets — ${inAmazonOnly.length}</h3><table class="rtable"><thead><tr><th>ASIN</th><th>SKU</th><th class="num">Stock</th><th class="num">Inbound</th></tr></thead><tbody>`;
-    inAmazonOnly.slice(0, 50).forEach(d => { h += `<tr><td style="font-family:IBM Plex Mono;font-size:10px">${d.asin}</td><td style="font-family:IBM Plex Mono;font-size:9px;color:var(--m)">${esc(d.sku || '—')}</td><td class="num">${d.qty}</td><td class="num">${d.inbound || 0}</td></tr>`; });
+    h += `<div class="rcard" style="border-color:var(--ylbd)"><h3 style="color:var(--yl)">On Amazon but NOT in Sheets — ${inAmazonOnly.length}</h3><p style="font-size:10px;color:var(--td);margin-bottom:8px">These ASINs exist on Amazon but are not tracked in your Sheets.</p><table class="rtable"><thead><tr><th>ASIN</th><th>SKU</th><th class="num">Stock</th><th class="num">Inbound</th></tr></thead><tbody>`;
+    inAmazonOnly.slice(0, 50).forEach(d => { h += `<tr><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td style="font-family:IBM Plex Mono;font-size:9px;color:var(--m)">${esc(d.sku || '—')}</td><td class="num">${d.qty || 0}</td><td class="num">${d.inbound || 0}</td></tr>`; });
+    if (inAmazonOnly.length > 50) h += `<tr><td colspan="4" style="color:var(--m);text-align:center">…and ${inAmazonOnly.length - 50} more</td></tr>`;
+    h += `</tbody></table><button class="rbtn" onclick="exportHealth('amazon_only')">Export list as CSV</button></div>`;
+  }
+  if (variantMismatch.length) {
+    h += `<div class="rcard" style="border-color:var(--mfnbd)"><h3 style="color:var(--mfn)">Variant Count Mismatch — ${variantMismatch.length}</h3><table class="rtable"><thead><tr><th>Product</th><th class="num">In Sheets</th><th class="num">On Amazon</th><th class="num">Diff</th></tr></thead><tbody>`;
+    variantMismatch.slice(0, 40).forEach(d => { h += `<tr><td>${esc(d.product)}</td><td class="num">${d.sheets}</td><td class="num">${d.amazon}</td><td class="num" style="color:${d.diff > 0 ? 'var(--dn)' : 'var(--fba)'};font-weight:700">${d.diff > 0 ? '+' : ''}${d.diff}</td></tr>`; });
     h += `</tbody></table></div>`;
   }
-  if (!issues) h += `<div style="text-align:center;padding:40px;color:var(--fba);font-size:16px;font-weight:700">✓ All Clear</div>`;
-  c.innerHTML = h;
+  if (!issues) h += `<div style="text-align:center;padding:40px;color:var(--fba);font-size:16px;font-weight:700">✓ All Clear — Sheets and Amazon are in sync!</div>`;
+  cont.innerHTML = h;
+}
+function exportHealth(type){
+  const am=window._amazonMap||{};
+  const listingAsins=new Set(D.map(d=>d.asin));
+  let csv,items,fname;
+  if(type==='sheets_only'){
+    items=D.filter(d=>!new Set(Object.keys(am)).has(d.asin));
+    csv='Product,Type,ASIN,Status,Category\n'+items.map(d=>`"${(d.product||'').replace(/"/g,'""')}","${d.type}","${d.asin}","${d.status}","${d.sheet}"`).join('\n');
+    fname='health_sheets_only';
+  } else {
+    items=Object.entries(am).filter(([a])=>!listingAsins.has(a)).map(([a,i])=>({asin:a,...(typeof i==='object'?i:{qty:0})}));
+    csv='ASIN,SKU,Stock,Inbound\n'+items.map(d=>`"${d.asin}","${d.sku||''}",${d.qty||0},${d.inbound||0}`).join('\n');
+    fname='health_amazon_only';
+  }
+  const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`${fname}_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast(`Exported ${items.length} items`);
 }
 
 // ── Analytics ──
@@ -1140,26 +1252,28 @@ let aR = false;
 function renderAnalytics() {
   if (aR) return; aR = true;
   const c = document.getElementById('analytics-content');
+  if (!D.length) { c.innerHTML = `<h2>Analytics</h2><div class="empty">No data — upload files to see analytics.</div>`; return; }
   const wq = D.filter(d => d.qty != null);
   const inS = wq.filter(d => d.qty > 0).length, oos = wq.filter(d => d.qty === 0).length, lo = wq.filter(d => d.qty > 0 && d.qty < 10).length, units = wq.reduce((s, d) => s + (d.qty || 0), 0);
+  const total = D.length || 1; // prevent division by zero
   let h = `<h2>Analytics</h2><div class="ss">
     <div class="ssc"><div class="ssc-v" style="color:var(--fba)">${units.toLocaleString()}</div><div class="ssc-l">Total Units</div></div>
     <div class="ssc"><div class="ssc-v" style="color:var(--ac)">${inS.toLocaleString()}</div><div class="ssc-l">In Stock</div></div>
     <div class="ssc"><div class="ssc-v" style="color:var(--dn)">${oos}</div><div class="ssc-l">Out of Stock</div></div>
     <div class="ssc"><div class="ssc-v" style="color:var(--mfn)">${lo}</div><div class="ssc-l">Low Stock</div></div>
   </div><div class="cg">`;
-  const cc = {}; D.forEach(d => cc[d.sheet] = (cc[d.sheet] || 0) + 1); const cs = Object.entries(cc).sort((a, b) => b[1] - a[1]); const cm = cs[0]?.[1] || 1;
-  h += `<div class="cc"><h3>By Category</h3><div class="bc">${cs.map(([n, c], i) => `<div class="br"><div class="bl">${n}</div><div class="bt"><div class="bf" style="width:${(c / cm * 100).toFixed(1)}%;background:${CL[i % 7]}"><span>${c}</span></div></div></div>`).join('')}</div></div>`;
-  const tc = {}; D.forEach(d => tc[d.type] = (tc[d.type] || 0) + 1); const ts = Object.entries(tc).sort((a, b) => b[1] - a[1]); const tm = ts[0]?.[1] || 1;
-  h += `<div class="cc"><h3>By Type</h3><div class="bc">${ts.map(([n, c], i) => `<div class="br"><div class="bl">${n}</div><div class="bt"><div class="bf" style="width:${(c / tm * 100).toFixed(1)}%;background:${CL[i % 7]}"><span>${c}</span></div></div></div>`).join('')}</div></div>`;
+  const catCounts = {}; D.forEach(d => catCounts[d.sheet] = (catCounts[d.sheet] || 0) + 1); const cs = Object.entries(catCounts).sort((a, b) => b[1] - a[1]); const cm = cs[0]?.[1] || 1;
+  h += `<div class="cc"><h3>By Category</h3><div class="bc">${cs.map(([n, v], i) => `<div class="br"><div class="bl">${n}</div><div class="bt"><div class="bf" style="width:${(v / cm * 100).toFixed(1)}%;background:${CL[i % 7]}"><span>${v}</span></div></div></div>`).join('')}</div></div>`;
+  const typeCounts = {}; D.forEach(d => typeCounts[d.type] = (typeCounts[d.type] || 0) + 1); const ts = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]); const tm = ts[0]?.[1] || 1;
+  h += `<div class="cc"><h3>By Type</h3><div class="bc">${ts.map(([n, v], i) => `<div class="br"><div class="bl">${n}</div><div class="bt"><div class="bf" style="width:${(v / tm * 100).toFixed(1)}%;background:${CL[i % 7]}"><span>${v}</span></div></div></div>`).join('')}</div></div>`;
   const fba = D.filter(d => d.status === 'FBA').length, mfn = D.filter(d => d.status === 'FBA/MFN').length, sd = D.filter(d => d.status === 'SO/DEL').length;
   h += `<div class="cc"><h3>By Status</h3><div class="bc">
-    <div class="br"><div class="bl">FBA</div><div class="bt"><div class="bf" style="width:${(fba / D.length * 100).toFixed(1)}%;background:var(--fba)"><span>${fba}</span></div></div></div>
-    <div class="br"><div class="bl">FBA/MFN</div><div class="bt"><div class="bf" style="width:${(mfn / D.length * 100).toFixed(1)}%;background:var(--mfn)"><span>${mfn}</span></div></div></div>
-    <div class="br"><div class="bl">SO/DEL</div><div class="bt"><div class="bf" style="width:${(sd / D.length * 100).toFixed(1)}%;background:var(--dn)"><span>${sd}</span></div></div></div>
+    <div class="br"><div class="bl">FBA</div><div class="bt"><div class="bf" style="width:${(fba / total * 100).toFixed(1)}%;background:var(--fba)"><span>${fba}</span></div></div></div>
+    <div class="br"><div class="bl">FBA/MFN</div><div class="bt"><div class="bf" style="width:${(mfn / total * 100).toFixed(1)}%;background:var(--mfn)"><span>${mfn}</span></div></div></div>
+    <div class="br"><div class="bl">SO/DEL</div><div class="bt"><div class="bf" style="width:${(sd / total * 100).toFixed(1)}%;background:var(--dn)"><span>${sd}</span></div></div></div>
   </div></div>`;
   const pc = {}; D.forEach(d => pc[d.product] = (pc[d.product] || 0) + 1); const tp = Object.entries(pc).sort((a, b) => b[1] - a[1]).slice(0, 12);
-  h += `<div class="cc"><h3>Top Products</h3><table class="rtable"><thead><tr><th>Product</th><th class="num">Variants</th></tr></thead><tbody>${tp.map(([n, c]) => `<tr><td>${esc(n)}</td><td class="num">${c}</td></tr>`).join('')}</tbody></table></div>`;
+  h += `<div class="cc"><h3>Top Products (by variants)</h3><table class="rtable"><thead><tr><th>Product</th><th class="num">Variants</th></tr></thead><tbody>${tp.map(([n, v]) => `<tr><td>${esc(n)}</td><td class="num">${v}</td></tr>`).join('')}</tbody></table></div>`;
   h += `</div>`; c.innerHTML = h;
 }
 
