@@ -363,7 +363,7 @@ const CL=['#4f8ef7','#00d4a0','#ff9f43','#a77bfa','#f7576c','#38bdf8','#fbbf24']
 async function init(){
   // Show loading state
   document.getElementById('s-tot').textContent='…';
-  const fbOk = false; // Firebase disabled for testing
+ const fbOk = await initFirebase();
   if (fbOk) {
     const fbData = await loadFromFirebase();
     if (fbData && fbData.length > 0) {
