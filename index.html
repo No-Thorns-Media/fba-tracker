@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -91,6 +92,7 @@ tbody td{padding:7px 9px;vertical-align:middle}
 .b-fba{background:var(--fbab);color:var(--fba);border:1px solid var(--fbabd)}
 .b-mfn{background:var(--mfnb);color:var(--mfn);border:1px solid var(--mfnbd)}
 .b-sd{background:var(--dnb);color:var(--dn);border:1px solid var(--dnbd)}
+.b-other{background:var(--s3);color:var(--m);border:1px solid var(--bd)}
 .cat{background:var(--s2);color:var(--m);font-size:9px;padding:2px 7px;border-radius:4px;font-weight:600;letter-spacing:.3px}
 .tt{color:var(--td);font-size:10.5px}
 .rn{font-family:'IBM Plex Mono';font-size:9px;color:var(--m);opacity:.3}
@@ -248,6 +250,7 @@ tbody td{padding:7px 9px;vertical-align:middle}
   <span class="ust" id="us-list"></span>
   <span class="report-info" id="report-info" style="display:none"><span class="dot"></span><span id="report-info-text">3 snapshots stored</span></span>
   <span class="uhelp" onclick="openH()">How to get files?</span>
+  <button class="ubtn" style="border-color:var(--dnbd);color:var(--dn);margin-left:auto" onclick="clearAllData()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>Clear DB</button>
 </div>
 <!-- Report History Timeline -->
 <div class="report-timeline" id="report-timeline" style="display:none">
@@ -258,7 +261,7 @@ tbody td{padding:7px 9px;vertical-align:middle}
   <div class="sw"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input type="text" id="search" placeholder="Search product, ASIN, or SKU…"></div>
   <select id="f-cat"><option value="">All Categories</option></select>
   <select id="f-type"><option value="">All Types</option></select>
-  <select id="f-status"><option value="">All Statuses</option><option value="FBA">FBA</option><option value="FBA/MFN">FBA/MFN</option><option value="SO/DEL">SO/DEL</option></select>
+  <select id="f-status"><option value="">All Statuses</option></select>
   <div class="sfg"><button class="sf on" data-f="all" onclick="setSF(this)">All</button><button class="sf" data-f="instock" onclick="setSF(this)">In Stock</button><button class="sf low" data-f="low" onclick="setSF(this)">Low</button><button class="sf out" data-f="out" onclick="setSF(this)">OOS</button></div>
   <button class="grp-toggle" id="grp-btn" onclick="toggleGrp()">Group</button>
   <button class="btn btn-ac" onclick="exportCSV()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export</button>
@@ -367,7 +370,7 @@ async function loadFromFirebase() {
     if (snap.exists()) {
       const data = snap.val();
       const items = Array.isArray(data) ? data : Object.values(data);
-      return items.filter(d => d && d.asin);
+      return items.filter(d => d && d.asin).map(d => ({ ...d, asin: (d.asin || '').trim().toUpperCase() }));
     }
   } catch(err) { console.error("Firebase load error:", err); }
   return null;
@@ -692,11 +695,13 @@ async function loadMeta() {
 }
 
 function popF() {
-  const cs = document.getElementById('f-cat'), ts = document.getElementById('f-type');
+  const cs = document.getElementById('f-cat'), ts = document.getElementById('f-type'), ss = document.getElementById('f-status');
   while(cs.options.length > 1) cs.remove(1);
   while(ts.options.length > 1) ts.remove(1);
+  while(ss.options.length > 1) ss.remove(1);
   [...new Set(D.map(d => d.sheet))].sort().forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; cs.appendChild(o); });
   [...new Set(D.map(d => d.type))].sort().forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; ts.appendChild(o); });
+  [...new Set(D.map(d => d.status).filter(Boolean))].sort().forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; ss.appendChild(o); });
 }
 
 function upS() {
@@ -738,8 +743,8 @@ function apply(rp) {
     if (status && d.status !== status) return false;
     if (q) {
       var p = (d.product || '').toLowerCase();
-      var a = (d.asin || '').toLowerCase();
-      var sk = (d.sku || '').toLowerCase();
+      var a = (d.asin || '').trim().toLowerCase();
+      var sk = (d.sku || '').trim().toLowerCase();
       if (p.indexOf(q) < 0 && a.indexOf(q) < 0 && sk.indexOf(q) < 0) return false;
     }
     if (SKF !== 'all') {
@@ -810,7 +815,7 @@ function renderGrouped(tb) {
 }
 
 function togG(id, row) { row.classList.toggle('open'); document.querySelectorAll('.' + id).forEach(r => r.classList.toggle('show')); }
-function bCls(s) { return s === 'FBA' ? 'b-fba' : s === 'FBA/MFN' ? 'b-mfn' : 'b-sd'; }
+function bCls(s) { return s === 'FBA' ? 'b-fba' : s === 'FBA/MFN' ? 'b-mfn' : s === 'SO/DEL' ? 'b-sd' : 'b-other'; }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function parseCSVRows(text) { const rows = []; let row = []; let cell = ''; let inQ = false; for (let i = 0; i < text.length; i++) { const c = text[i]; if (inQ) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else inQ = false; } else cell += c; } else { if (c === '"') inQ = true; else if (c === ',') { row.push(cell); cell = ''; } else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); if (row.length > 1 || row[0]) rows.push(row); row = []; cell = ''; } else cell += c; } } row.push(cell); if (row.length > 1 || row[0]) rows.push(row); return rows; }
 
@@ -824,7 +829,14 @@ function ft(t, id) { return `<span class="ft">${esc(t)} <span class="x" onclick=
 function clrF(id) { if (id === 'stock') { SKF = 'all'; document.querySelectorAll('.sf').forEach((b, i) => b.classList.toggle('on', i === 0)); } else document.getElementById(id).value = ''; apply(); }
 function clrAll() { ['search', 'f-cat', 'f-type', 'f-status'].forEach(id => document.getElementById(id).value = ''); SKF = 'all'; document.querySelectorAll('.sf').forEach((b, i) => b.classList.toggle('on', i === 0)); apply(); }
 function rPag(total) { const pages = Math.ceil(total / PS), p = document.getElementById('pag'); if (pages <= 1 || GRP) { p.innerHTML = ''; return; } let h = `<button onclick="goP(${CP - 1})" ${CP === 1 ? 'disabled' : ''}>←</button>`; let s = Math.max(1, CP - 2), e = Math.min(pages, CP + 2); if (s > 1) h += `<button onclick="goP(1)">1</button>` + (s > 2 ? '<span class="pi">…</span>' : ''); for (let i = s; i <= e; i++) h += `<button class="${i === CP ? 'on' : ''}" onclick="goP(${i})">${i}</button>`; if (e < pages) h += (e < pages - 1 ? '<span class="pi">…</span>' : '') + `<button onclick="goP(${pages})">${pages}</button>`; h += `<button onclick="goP(${CP + 1})" ${CP === pages ? 'disabled' : ''}>→</button><span class="pi">${CP}/${pages}</span>`; p.innerHTML = h; }
-function goP(p) { CP = p; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function goP(p) {
+  CP = p; render();
+  const tb = document.getElementById('tbody');
+  if (tb) {
+    const top = tb.getBoundingClientRect().top + window.scrollY - 80;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
+}
 function chPP() { PS = parseInt(document.getElementById('pp').value); CP = 1; render(); }
 
 // ═══════════════════════════════════════════
@@ -924,10 +936,10 @@ function uploadXlsx(input) {
           const prod = String(row[0]).trim();
           ptypes.forEach(([ti, tn]) => {
             const si = ti - 1;
-            const asin = String(row[ti] || '').trim();
+            const asin = String(row[ti] || '').trim().toUpperCase();
             const status = String(row[si] || '').trim();
             if (!asin || asin === 'NA') return;
-            if (!KEEP.has(status)) return;
+            if (!status) return;
             items.push({ sheet: sn, product: prod, type: tn, asin: asin, status: status, qty: null });
           });
         }
@@ -1275,6 +1287,23 @@ function renderAnalytics() {
   const pc = {}; D.forEach(d => pc[d.product] = (pc[d.product] || 0) + 1); const tp = Object.entries(pc).sort((a, b) => b[1] - a[1]).slice(0, 12);
   h += `<div class="cc"><h3>Top Products (by variants)</h3><table class="rtable"><thead><tr><th>Product</th><th class="num">Variants</th></tr></thead><tbody>${tp.map(([n, v]) => `<tr><td>${esc(n)}</td><td class="num">${v}</td></tr>`).join('')}</tbody></table></div>`;
   h += `</div>`; c.innerHTML = h;
+}
+
+// ── Clear all data ──
+async function clearAllData() {
+  if (!confirm('Удалить ВСЕ данные из базы? Это действие нельзя отменить.')) return;
+  if (!firebaseReady) { toast('Firebase не подключён'); return; }
+  try {
+    await dbRef.remove(dbRef.ref(dbRef.db, 'inventory'));
+    D = []; reportHistory = []; changeLog = [];
+    window._amazonMap = null; window._amazonReportDate = null;
+    rR = false; cR = false; hR = false; aR = false;
+    popF(); upS(); apply(); upTabs(); updateTimeline();
+    document.getElementById('us-stock').textContent = '';
+    document.getElementById('us-list').textContent = '';
+    document.getElementById('hsub-text').textContent = 'База очищена — загрузите свежие отчёты';
+    toast('База данных очищена');
+  } catch(err) { toast('Ошибка: ' + err.message); }
 }
 
 // ── Utils ──
