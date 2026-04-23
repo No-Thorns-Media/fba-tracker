@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -331,12 +330,8 @@ const FIREBASE_CONFIG = {
 // ═══════════════════════════════════════════
 // REPORT HISTORY SYSTEM
 // ═══════════════════════════════════════════
-// Stores up to 3 snapshots: current, previous, oldest
-// Each snapshot = { date, stockMap: {asin: {qty, inbound, sku}}, listingCount }
-// On new upload: oldest is deleted, previous becomes oldest, current becomes previous, new becomes current
-
-let reportHistory = []; // array of snapshots, newest first, max 3
-let changeLog = []; // computed differences between reports
+let reportHistory = [];
+let changeLog = [];
 
 const RAW = [{"sheet": "FUN", "product": "mind the gap", "type": "Sticker (Single)", "asin": "B0CB8R4755", "status": "FBA", "qty": 0, "inbound": 0, "sku": "PF64a6b0325cfffV1-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Sticker (2-Pack)", "asin": "B0FDGG4C7B", "status": "FBA", "qty": 0, "inbound": 0, "sku": "6C9-IZHO-EDG7-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Magnet (2-Pack)", "asin": "B0DJZNPS7Q", "status": "FBA", "qty": 24, "inbound": 25, "sku": "E4S-PRDP-533Y-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Patch (Single)", "asin": "B0F99TJ8T6", "status": "FBA", "qty": 73, "inbound": 0, "sku": "DGM-M9L4-299F-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Mug 11 White", "asin": "B0FC6YVBQG", "status": "FBA/MFN", "qty": null, "inbound": null, "sku": ""}, {"sheet": "FUN", "product": "mind the gap", "type": "Mug 11 Black", "asin": "B0FC6BBBCD", "status": "FBA/MFN", "qty": 12, "inbound": 0, "sku": "SJ1-JV3Z-6S7C-FBA"}]; // TRUNCATED — full data loads from Firebase
 
@@ -388,17 +383,15 @@ async function saveToFirebase(data) {
   } catch(err) { console.error("Firebase save error:", err); }
 }
 
-// ── Report History Firebase Operations ──
 async function loadReportHistory() {
   if (!firebaseReady) return [];
   try {
     const snap = await dbRef.get(dbRef.ref(dbRef.db, 'inventory/reportHistory'));
     if (snap.exists()) {
       const data = snap.val();
-      // Convert object to array if needed, sort newest first
       let arr = Array.isArray(data) ? data : Object.values(data);
       arr = arr.filter(r => r && r.date).sort((a, b) => new Date(b.date) - new Date(a.date));
-      return arr.slice(0, 3); // keep max 3
+      return arr.slice(0, 3);
     }
   } catch(err) { console.error("Load history error:", err); }
   return [];
@@ -407,20 +400,15 @@ async function loadReportHistory() {
 async function saveReportHistory(history) {
   if (!firebaseReady) return;
   try {
-    // Keep only 3 most recent
     const toSave = history.slice(0, 3);
     await dbRef.set(dbRef.ref(dbRef.db, 'inventory/reportHistory'), toSave);
   } catch(err) { console.error("Save history error:", err); }
 }
 
-// ── Amazon Map Persistence (for Health Check) ──
 async function saveAmazonMap(map, date) {
   if (!firebaseReady) return;
   try {
-    await dbRef.set(dbRef.ref(dbRef.db, 'inventory/amazonMap'), {
-      data: map,
-      date: date
-    });
+    await dbRef.set(dbRef.ref(dbRef.db, 'inventory/amazonMap'), { data: map, date: date });
     console.log('Amazon map saved:', Object.keys(map).length, 'ASINs');
   } catch(err) { console.error("Save amazonMap error:", err); }
 }
@@ -443,21 +431,15 @@ function createStockSnapshot(data, source) {
   data.forEach(d => {
     if (d.asin) {
       stockMap[d.asin] = {
-        qty: d.qty,
-        inbound: d.inbound,
-        sku: d.sku || '',
-        product: d.product || '',
-        type: d.type || '',
-        status: d.status || '',
-        sheet: d.sheet || ''
+        qty: d.qty, inbound: d.inbound, sku: d.sku || '',
+        product: d.product || '', type: d.type || '',
+        status: d.status || '', sheet: d.sheet || ''
       };
     }
   });
   return {
-    date: new Date().toISOString(),
-    source: source, // 'stock' or 'listings' or 'initial'
-    stockMap: stockMap,
-    totalItems: data.length,
+    date: new Date().toISOString(), source: source,
+    stockMap: stockMap, totalItems: data.length,
     totalUnits: data.reduce((s, d) => s + (d.qty || 0), 0),
     oosCount: data.filter(d => d.qty != null && d.qty === 0).length
   };
@@ -475,124 +457,31 @@ function compareSnapshots(current, previous) {
     const prev = prevMap[asin];
 
     if (cur && !prev) {
-      // New ASIN
-      changes.push({
-        type: 'new_asin',
-        asin,
-        product: cur.product,
-        itemType: cur.type,
-        sheet: cur.sheet,
-        qty: cur.qty,
-        inbound: cur.inbound
-      });
+      changes.push({ type: 'new_asin', asin, product: cur.product, itemType: cur.type, sheet: cur.sheet, qty: cur.qty, inbound: cur.inbound });
     } else if (!cur && prev) {
-      // Removed ASIN
-      changes.push({
-        type: 'removed_asin',
-        asin,
-        product: prev.product,
-        itemType: prev.type,
-        sheet: prev.sheet,
-        prevQty: prev.qty,
-        prevInbound: prev.inbound
-      });
+      changes.push({ type: 'removed_asin', asin, product: prev.product, itemType: prev.type, sheet: prev.sheet, prevQty: prev.qty, prevInbound: prev.inbound });
     } else if (cur && prev) {
       const diffs = [];
-
-      // Stock change
-      if (cur.qty !== prev.qty && cur.qty != null && prev.qty != null) {
-        diffs.push({
-          field: 'stock',
-          from: prev.qty,
-          to: cur.qty,
-          delta: cur.qty - prev.qty
-        });
-      }
-
-      // Inbound change
-      if (cur.inbound !== prev.inbound && cur.inbound != null && prev.inbound != null) {
-        diffs.push({
-          field: 'inbound',
-          from: prev.inbound,
-          to: cur.inbound,
-          delta: cur.inbound - prev.inbound
-        });
-      }
-
-      // Status change
-      if (cur.status !== prev.status && cur.status && prev.status) {
-        diffs.push({
-          field: 'status',
-          from: prev.status,
-          to: cur.status
-        });
-      }
-
-      // SKU change
-      if (cur.sku !== prev.sku && cur.sku && prev.sku) {
-        diffs.push({
-          field: 'sku',
-          from: prev.sku,
-          to: cur.sku
-        });
-      }
-
-      // Went OOS
-      if (prev.qty > 0 && cur.qty === 0) {
-        diffs.push({ field: 'went_oos', from: prev.qty, to: 0 });
-      }
-
-      // Back in stock
-      if (prev.qty === 0 && cur.qty > 0) {
-        diffs.push({ field: 'back_in_stock', from: 0, to: cur.qty });
-      }
-
-      if (diffs.length > 0) {
-        changes.push({
-          type: 'changed',
-          asin,
-          product: cur.product || prev.product,
-          itemType: cur.type || prev.type,
-          sheet: cur.sheet || prev.sheet,
-          status: cur.status,
-          diffs
-        });
-      }
+      if (cur.qty !== prev.qty && cur.qty != null && prev.qty != null) diffs.push({ field: 'stock', from: prev.qty, to: cur.qty, delta: cur.qty - prev.qty });
+      if (cur.inbound !== prev.inbound && cur.inbound != null && prev.inbound != null) diffs.push({ field: 'inbound', from: prev.inbound, to: cur.inbound, delta: cur.inbound - prev.inbound });
+      if (cur.status !== prev.status && cur.status && prev.status) diffs.push({ field: 'status', from: prev.status, to: cur.status });
+      if (cur.sku !== prev.sku && cur.sku && prev.sku) diffs.push({ field: 'sku', from: prev.sku, to: cur.sku });
+      if (prev.qty > 0 && cur.qty === 0) diffs.push({ field: 'went_oos', from: prev.qty, to: 0 });
+      if (prev.qty === 0 && cur.qty > 0) diffs.push({ field: 'back_in_stock', from: 0, to: cur.qty });
+      if (diffs.length > 0) changes.push({ type: 'changed', asin, product: cur.product || prev.product, itemType: cur.type || prev.type, sheet: cur.sheet || prev.sheet, status: cur.status, diffs });
     }
   });
-
   return changes;
 }
 
 function computeAllChanges() {
   changeLog = [];
   if (reportHistory.length >= 2) {
-    const curVsPrev = compareSnapshots(reportHistory[0], reportHistory[1]);
-    changeLog.push({
-      label: 'Current vs Previous',
-      fromDate: reportHistory[1].date,
-      toDate: reportHistory[0].date,
-      changes: curVsPrev
-    });
+    changeLog.push({ label: 'Current vs Previous', fromDate: reportHistory[1].date, toDate: reportHistory[0].date, changes: compareSnapshots(reportHistory[0], reportHistory[1]) });
   }
   if (reportHistory.length >= 3) {
-    const prevVsOldest = compareSnapshots(reportHistory[1], reportHistory[2]);
-    changeLog.push({
-      label: 'Previous vs Oldest',
-      fromDate: reportHistory[2].date,
-      toDate: reportHistory[1].date,
-      changes: prevVsOldest
-    });
-  }
-  // Also add a "trend" comparison: current vs oldest (if 3 snapshots)
-  if (reportHistory.length >= 3) {
-    const curVsOldest = compareSnapshots(reportHistory[0], reportHistory[2]);
-    changeLog.push({
-      label: 'Current vs Oldest (trend)',
-      fromDate: reportHistory[2].date,
-      toDate: reportHistory[0].date,
-      changes: curVsOldest
-    });
+    changeLog.push({ label: 'Previous vs Oldest', fromDate: reportHistory[2].date, toDate: reportHistory[1].date, changes: compareSnapshots(reportHistory[1], reportHistory[2]) });
+    changeLog.push({ label: 'Current vs Oldest (trend)', fromDate: reportHistory[2].date, toDate: reportHistory[0].date, changes: compareSnapshots(reportHistory[0], reportHistory[2]) });
   }
 }
 
@@ -601,27 +490,14 @@ function updateTimeline() {
   const slots = document.getElementById('timeline-slots');
   const info = document.getElementById('report-info');
   const infoText = document.getElementById('report-info-text');
-
-  if (reportHistory.length === 0) {
-    tl.style.display = 'none';
-    info.style.display = 'none';
-    return;
-  }
-
-  tl.style.display = 'flex';
-  info.style.display = 'flex';
+  if (reportHistory.length === 0) { tl.style.display = 'none'; info.style.display = 'none'; return; }
+  tl.style.display = 'flex'; info.style.display = 'flex';
   infoText.textContent = reportHistory.length + ' snapshot' + (reportHistory.length > 1 ? 's' : '') + ' stored';
-
   const labels = ['Current', 'Previous', 'Oldest'];
   slots.innerHTML = reportHistory.map((r, i) => {
     const d = new Date(r.date);
     const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-    const cls = i === 0 ? 'active' : '';
-    return `<div class="report-slot ${cls}">
-      <span class="rs-label">${labels[i]}</span>
-      <span class="rs-date">${dateStr}</span>
-      <span class="rs-count">${r.totalItems} items · ${r.totalUnits} units</span>
-    </div>`;
+    return `<div class="report-slot ${i === 0 ? 'active' : ''}"><span class="rs-label">${labels[i]}</span><span class="rs-date">${dateStr}</span><span class="rs-count">${r.totalItems} items · ${r.totalUnits} units</span></div>`;
   }).join('');
 }
 
@@ -635,12 +511,10 @@ async function init() {
   document.getElementById('s-tot').textContent = '…';
   document.getElementById('hsub-text').textContent = 'Connecting to cloud…';
   const fbOk = await initFirebase();
-  console.log('Firebase init:', fbOk);
   if (fbOk) {
     try {
       document.getElementById('hsub-text').textContent = 'Loading data from cloud…';
       const fbData = await loadFromFirebase();
-      console.log('Firebase data loaded:', fbData ? fbData.length : 'null');
       if (fbData && fbData.length > 0) {
         D = fbData;
         const meta = await loadMeta();
@@ -652,21 +526,15 @@ async function init() {
         }
         toast('Loaded from cloud: ' + D.length + ' items');
       } else {
-        console.log('No data in Firebase');
         document.getElementById('hsub-text').textContent = 'No data in cloud — upload files to start';
       }
-      // Load report history
       reportHistory = await loadReportHistory();
-      console.log('Report history loaded:', reportHistory.length, 'snapshots');
       computeAllChanges();
       updateTimeline();
-
-      // Load amazonMap for Health Check persistence
       const savedAmazonMap = await loadAmazonMap();
       if (savedAmazonMap && savedAmazonMap.data) {
         window._amazonMap = savedAmazonMap.data;
         window._amazonReportDate = savedAmazonMap.date;
-        console.log('Amazon map restored:', Object.keys(savedAmazonMap.data).length, 'ASINs');
       }
     } catch(err) {
       console.error('Init load error:', err);
@@ -676,10 +544,8 @@ async function init() {
   } else {
     document.getElementById('hsub-text').textContent = 'Firebase unavailable — upload files to start';
   }
-  // Fallback to RAW if nothing loaded
   if (!D.length && RAW.length) {
     D = [...RAW];
-    console.log('Using RAW fallback:', D.length, 'items');
     document.getElementById('hsub-text').textContent = `Fallback data: ${D.length} items — upload fresh reports`;
   }
   popF(); upS(); apply(); upTabs();
@@ -719,10 +585,8 @@ function upTabs() {
   const oos = wq.filter(d => d.qty === 0).length, low = wq.filter(d => d.qty > 0 && d.qty < 10).length;
   document.getElementById('rc').textContent = oos + low;
   if (oos + low > 0) document.getElementById('t-restock').classList.add('alert');
-
-  // Changes count
   let totalChanges = 0;
-  if (changeLog.length > 0) totalChanges = changeLog[0].changes.length; // current vs prev
+  if (changeLog.length > 0) totalChanges = changeLog[0].changes.length;
   document.getElementById('cc').textContent = totalChanges;
   if (totalChanges > 0) document.getElementById('t-conflicts').classList.add('alert');
 }
@@ -879,8 +743,6 @@ function uploadStock(input) {
 
       window._amazonMap = newMap;
       window._amazonReportDate = new Date().toISOString();
-
-      // Save amazonMap to Firebase for persistence across page reloads
       await saveAmazonMap(newMap, window._amazonReportDate);
 
       let m = 0;
@@ -889,18 +751,12 @@ function uploadStock(input) {
         if (n) { d.qty = n.qty; d.inbound = n.inbound; if (n.sku) d.sku = n.sku; m++; }
       });
 
-      // ── CREATE SNAPSHOT & COMPARE ──
       const snapshot = createStockSnapshot(D, 'stock');
-
-      // Shift history: add new snapshot at front, keep max 3
       reportHistory.unshift(snapshot);
       if (reportHistory.length > 3) reportHistory = reportHistory.slice(0, 3);
-
-      // Compute changes
       computeAllChanges();
       updateTimeline();
 
-      // Save everything
       upS(); apply(); rR = false; cR = false; hR = false; aR = false; upTabs();
       await saveToFirebase(D);
       await saveReportHistory(reportHistory);
@@ -922,7 +778,6 @@ function uploadXlsx(input) {
   reader.onload = async function(e) {
     try {
       const wb = XLSX.read(e.target.result, { type: 'array' });
-      const KEEP = new Set(['FBA', 'FBA/MFN', 'SO/DEL']);
       const items = [];
       wb.SheetNames.forEach(sn => {
         const ws = wb.Sheets[sn];
@@ -946,7 +801,6 @@ function uploadXlsx(input) {
       });
       if (!items.length) throw new Error('No valid rows');
 
-      // Preserve stock/sku/inbound from previous
       const oldData = {}; D.forEach(d => { if (d.asin) oldData[d.asin] = { qty: d.qty, inbound: d.inbound, sku: d.sku }; });
       items.forEach(d => {
         const old = oldData[d.asin];
@@ -956,7 +810,6 @@ function uploadXlsx(input) {
 
       D = items;
 
-      // Create snapshot for listings upload too
       const snapshot = createStockSnapshot(D, 'listings');
       reportHistory.unshift(snapshot);
       if (reportHistory.length > 3) reportHistory = reportHistory.slice(0, 3);
@@ -1034,7 +887,7 @@ function exportRestock(type){
 }
 
 // ═══════════════════════════════════════════
-// CONFLICTS/CHANGES — enhanced with report comparison
+// CONFLICTS/CHANGES
 // ═══════════════════════════════════════════
 let cR = false;
 function renderConflicts() {
@@ -1042,13 +895,12 @@ function renderConflicts() {
   const cont = document.getElementById('conflicts-content');
 
   if (changeLog.length === 0) {
-    cont.innerHTML = `<h2>Report Changes</h2><div class="rsub">Upload at least 2 stock reports to see changes between them. The system stores up to 3 snapshots and compares them automatically.</div><div class="empty">No report history yet — upload your first stock report to start tracking changes.</div>`;
+    cont.innerHTML = `<h2>Report Changes</h2><div class="rsub">Upload at least 2 stock reports to see changes between them.</div><div class="empty">No report history yet — upload your first stock report to start tracking changes.</div>`;
     return;
   }
 
   let h = `<h2>Report Changes</h2><div class="rsub">Comparing ${reportHistory.length} snapshots · Changes are detected automatically when you upload new reports</div>`;
 
-  // Summary cards for latest comparison
   if (changeLog.length > 0) {
     const latest = changeLog[0];
     const wentOos = latest.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'went_oos'));
@@ -1057,7 +909,6 @@ function renderConflicts() {
     const stockUp = latest.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'stock' && df.delta > 0));
     const newAs = latest.changes.filter(ch => ch.type === 'new_asin');
     const removedAs = latest.changes.filter(ch => ch.type === 'removed_asin');
-
     h += `<div class="ss">
       <div class="ssc"><div class="ssc-v" style="color:var(--dn)">${wentOos.length}</div><div class="ssc-l">Went OOS</div></div>
       <div class="ssc"><div class="ssc-v" style="color:var(--fba)">${backInStock.length}</div><div class="ssc-l">Back in Stock</div></div>
@@ -1068,7 +919,6 @@ function renderConflicts() {
     </div>`;
   }
 
-  // Render each comparison
   changeLog.forEach((log, logIdx) => {
     const fromD = new Date(log.fromDate);
     const toD = new Date(log.toDate);
@@ -1084,7 +934,6 @@ function renderConflicts() {
     h += `<h3 style="color:${logIdx === 0 ? 'var(--yl)' : 'var(--m)'}">${logIdx === 0 ? '⚠' : '📋'} ${log.label} <span class="conflict-count" style="background:${logIdx === 0 ? 'var(--ylb)' : 'var(--s3)'}; color:${logIdx === 0 ? 'var(--yl)' : 'var(--m)'}">${log.changes.length} changes</span></h3>`;
     h += `<p style="font-size:10px;color:var(--m);margin-bottom:12px">${fromStr} → ${toStr}</p>`;
 
-    // Group changes by type
     const wentOos = log.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'went_oos'));
     const backInStock = log.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'back_in_stock'));
     const stockChanges = log.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'stock') && !ch.diffs.some(df => df.field === 'went_oos' || df.field === 'back_in_stock'));
@@ -1092,7 +941,6 @@ function renderConflicts() {
     const newAsins = log.changes.filter(ch => ch.type === 'new_asin');
     const removedAsins = log.changes.filter(ch => ch.type === 'removed_asin');
 
-    // Went OOS
     if (wentOos.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--dn);font-size:10px">🚨 WENT OUT OF STOCK — ${wentOos.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Before</th><th style="text-align:right">Now</th></tr></thead><tbody>`;
       wentOos.slice(0, 50).forEach(ch => {
@@ -1101,8 +949,6 @@ function renderConflicts() {
       });
       h += `</tbody></table></div>`;
     }
-
-    // Back in stock
     if (backInStock.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--fba);font-size:10px">✅ BACK IN STOCK — ${backInStock.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Now</th></tr></thead><tbody>`;
       backInStock.slice(0, 50).forEach(ch => {
@@ -1111,60 +957,39 @@ function renderConflicts() {
       });
       h += `</tbody></table></div>`;
     }
-
-    // Stock changes (up/down)
     if (stockChanges.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--mfn);font-size:10px">📊 STOCK CHANGES — ${stockChanges.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Before</th><th style="text-align:right">Now</th><th style="text-align:right">Δ</th></tr></thead><tbody>`;
-      stockChanges.sort((a, b) => {
-        const da = a.diffs.find(x => x.field === 'stock'); const db = b.diffs.find(x => x.field === 'stock');
-        return (da ? da.delta : 0) - (db ? db.delta : 0);
-      }).slice(0, 50).forEach(ch => {
-        const df = ch.diffs.find(x => x.field === 'stock');
-        if (!df) return;
-        const cls = df.delta > 0 ? 'delta-up' : 'delta-down';
-        const sign = df.delta > 0 ? '+' : '';
+      stockChanges.sort((a, b) => { const da = a.diffs.find(x => x.field === 'stock'); const db = b.diffs.find(x => x.field === 'stock'); return (da ? da.delta : 0) - (db ? db.delta : 0); }).slice(0, 50).forEach(ch => {
+        const df = ch.diffs.find(x => x.field === 'stock'); if (!df) return;
+        const cls = df.delta > 0 ? 'delta-up' : 'delta-down'; const sign = df.delta > 0 ? '+' : '';
         h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px">${ch.asin}</td><td style="text-align:right;font-family:IBM Plex Mono;color:var(--m)">${df.from}</td><td style="text-align:right;font-family:IBM Plex Mono">${df.to}</td><td class="${cls}" style="text-align:right">${sign}${df.delta}</td></tr>`;
       });
       h += `</tbody></table></div>`;
     }
-
-    // Status changes
     if (statusChanges.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--pp);font-size:10px">🔄 STATUS CHANGES — ${statusChanges.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Before</th><th>Now</th></tr></thead><tbody>`;
       statusChanges.slice(0, 30).forEach(ch => {
-        const df = ch.diffs.find(x => x.field === 'status');
-        if (!df) return;
+        const df = ch.diffs.find(x => x.field === 'status'); if (!df) return;
         h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px">${ch.asin}</td><td><span class="badge ${bCls(df.from)}">${df.from}</span></td><td><span class="badge ${bCls(df.to)}">${df.to}</span></td></tr>`;
       });
       h += `</tbody></table></div>`;
     }
-
-    // New ASINs
     if (newAsins.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--ac);font-size:10px">🆕 NEW ASINS — ${newAsins.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Stock</th></tr></thead><tbody>`;
-      newAsins.slice(0, 50).forEach(ch => {
-        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${ch.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${ch.asin}</a></td><td class="delta-new" style="text-align:right">${ch.qty != null ? ch.qty : '—'}</td></tr>`;
-      });
+      newAsins.slice(0, 50).forEach(ch => { h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${ch.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${ch.asin}</a></td><td class="delta-new" style="text-align:right">${ch.qty != null ? ch.qty : '—'}</td></tr>`; });
       h += `</tbody></table></div>`;
     }
-
-    // Removed ASINs
     if (removedAsins.length) {
       h += `<div class="conflict-section"><h3 style="color:var(--dn);font-size:10px">❌ REMOVED ASINS — ${removedAsins.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Had Stock</th></tr></thead><tbody>`;
-      removedAsins.slice(0, 50).forEach(ch => {
-        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px" class="delta-gone">${ch.asin}</td><td style="text-align:right;font-family:IBM Plex Mono;color:var(--m)">${ch.prevQty != null ? ch.prevQty : '—'}</td></tr>`;
-      });
+      removedAsins.slice(0, 50).forEach(ch => { h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px" class="delta-gone">${ch.asin}</td><td style="text-align:right;font-family:IBM Plex Mono;color:var(--m)">${ch.prevQty != null ? ch.prevQty : '—'}</td></tr>`; });
       h += `</tbody></table></div>`;
     }
-
-    h += `</div>`; // close ccard
+    h += `</div>`;
   });
 
-  // Export all changes button
   if (changeLog.length > 0 && changeLog[0].changes.length > 0) {
     h += `<button class="rbtn" onclick="exportChanges()">Export all changes as CSV</button>`;
   }
-
   cont.innerHTML = h;
 }
 function exportChanges(){
@@ -1187,7 +1012,7 @@ function renderHealth() {
   const am = window._amazonMap;
   if (!am) {
     cont.innerHTML = `<h2>Health Check</h2><div class="rsub">Upload an Amazon stock report first to run the audit.</div><div class="empty">No Amazon report data available. Upload a Stock Report (.txt/.tsv) to enable the health check.</div>`;
-    hR = false; // allow re-render when amazonMap becomes available
+    hR = false;
     return;
   }
   if (!D.length) {
@@ -1200,7 +1025,6 @@ function renderHealth() {
   const inSheetsOnly = D.filter(d => !amazonAsins.has(d.asin));
   const inAmazonOnly = Object.entries(am).filter(([a]) => !listingAsins.has(a)).map(([a, info]) => ({ asin: a, ...(typeof info === 'object' ? info : {qty:0}) }));
 
-  // Variant count mismatch
   const sheetProdCount = {}; D.forEach(d => { sheetProdCount[d.product] = (sheetProdCount[d.product] || 0) + 1; });
   const asinToProduct = {}; D.forEach(d => { asinToProduct[d.asin] = d.product; });
   const amazonProdCount = {}; Object.keys(am).forEach(a => { const p = asinToProduct[a]; if (p) amazonProdCount[p] = (amazonProdCount[p] || 0) + 1; });
@@ -1267,7 +1091,7 @@ function renderAnalytics() {
   if (!D.length) { c.innerHTML = `<h2>Analytics</h2><div class="empty">No data — upload files to see analytics.</div>`; return; }
   const wq = D.filter(d => d.qty != null);
   const inS = wq.filter(d => d.qty > 0).length, oos = wq.filter(d => d.qty === 0).length, lo = wq.filter(d => d.qty > 0 && d.qty < 10).length, units = wq.reduce((s, d) => s + (d.qty || 0), 0);
-  const total = D.length || 1; // prevent division by zero
+  const total = D.length || 1;
   let h = `<h2>Analytics</h2><div class="ss">
     <div class="ssc"><div class="ssc-v" style="color:var(--fba)">${units.toLocaleString()}</div><div class="ssc-l">Total Units</div></div>
     <div class="ssc"><div class="ssc-v" style="color:var(--ac)">${inS.toLocaleString()}</div><div class="ssc-l">In Stock</div></div>
