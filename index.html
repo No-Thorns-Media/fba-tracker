@@ -71,10 +71,12 @@ select,.btn{padding:7px 10px;background:var(--s2);border:1px solid var(--bd);bor
 .cab{font-size:10px;color:var(--m);cursor:pointer;padding:2px 6px;border:none;background:none;font-family:'Syne';font-weight:600}
 .cab:hover{color:var(--dn)}
 
+/* Controls sticky */
+.ctrl{position:sticky;top:46px;z-index:90}
 /* Table */
 .tw{overflow-x:auto;padding:0 40px 10px}
-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:11.5px}
-thead th{text-align:left;padding:7px 9px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--m);border-bottom:1px solid var(--bd);white-space:nowrap;cursor:pointer;user-select:none;transition:.12s;position:sticky;top:46px;background:var(--bg);z-index:10}
+table{width:100%;border-collapse:collapse;margin-top:0;font-size:11.5px}
+thead th{text-align:left;padding:7px 9px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--m);border-bottom:2px solid var(--bd);white-space:nowrap;cursor:pointer;user-select:none;transition:.12s;background:var(--bg)}
 thead th:hover{color:var(--td)}
 thead th .si{opacity:.2;margin-left:2px;font-size:8px}
 thead th.sd .si{opacity:1;color:var(--ac)}thead th.sd{color:var(--t)}
@@ -314,9 +316,6 @@ tbody td{padding:7px 9px;vertical-align:middle}
 <div class="toast" id="toast"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><span id="tm"></span></div>
 
 <script>
-// ═══════════════════════════════════════════
-// FIREBASE CONFIG
-// ═══════════════════════════════════════════
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyB08-RZU489mHZagucU7fXPjLfnWASr690",
   authDomain: "fba-tracker-1ae08.firebaseapp.com",
@@ -327,22 +326,16 @@ const FIREBASE_CONFIG = {
   appId: "1:832455319986:web:3c6eec34479eec3c1604ab"
 };
 
-// ═══════════════════════════════════════════
-// REPORT HISTORY SYSTEM
-// ═══════════════════════════════════════════
 let reportHistory = [];
 let changeLog = [];
 
-const RAW = [{"sheet": "FUN", "product": "mind the gap", "type": "Sticker (Single)", "asin": "B0CB8R4755", "status": "FBA", "qty": 0, "inbound": 0, "sku": "PF64a6b0325cfffV1-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Sticker (2-Pack)", "asin": "B0FDGG4C7B", "status": "FBA", "qty": 0, "inbound": 0, "sku": "6C9-IZHO-EDG7-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Magnet (2-Pack)", "asin": "B0DJZNPS7Q", "status": "FBA", "qty": 24, "inbound": 25, "sku": "E4S-PRDP-533Y-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Patch (Single)", "asin": "B0F99TJ8T6", "status": "FBA", "qty": 73, "inbound": 0, "sku": "DGM-M9L4-299F-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Mug 11 White", "asin": "B0FC6YVBQG", "status": "FBA/MFN", "qty": null, "inbound": null, "sku": ""}, {"sheet": "FUN", "product": "mind the gap", "type": "Mug 11 Black", "asin": "B0FC6BBBCD", "status": "FBA/MFN", "qty": 12, "inbound": 0, "sku": "SJ1-JV3Z-6S7C-FBA"}]; // TRUNCATED — full data loads from Firebase
+const RAW = [{"sheet": "FUN", "product": "mind the gap", "type": "Sticker (Single)", "asin": "B0CB8R4755", "status": "FBA", "qty": 0, "inbound": 0, "sku": "PF64a6b0325cfffV1-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Sticker (2-Pack)", "asin": "B0FDGG4C7B", "status": "FBA", "qty": 0, "inbound": 0, "sku": "6C9-IZHO-EDG7-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Magnet (2-Pack)", "asin": "B0DJZNPS7Q", "status": "FBA", "qty": 24, "inbound": 25, "sku": "E4S-PRDP-533Y-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Patch (Single)", "asin": "B0F99TJ8T6", "status": "FBA", "qty": 73, "inbound": 0, "sku": "DGM-M9L4-299F-FBA"}, {"sheet": "FUN", "product": "mind the gap", "type": "Mug 11 White", "asin": "B0FC6YVBQG", "status": "FBA/MFN", "qty": null, "inbound": null, "sku": ""}, {"sheet": "FUN", "product": "mind the gap", "type": "Mug 11 Black", "asin": "B0FC6BBBCD", "status": "FBA/MFN", "qty": 12, "inbound": 0, "sku": "SJ1-JV3Z-6S7C-FBA"}];
 
 let firebaseReady = false;
 let dbRef = null;
 
 async function initFirebase() {
-  if (FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") {
-    console.log("Firebase not configured");
-    return false;
-  }
+  if (FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") { console.log("Firebase not configured"); return false; }
   try {
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
     const { getDatabase, ref, get, set, remove } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js");
@@ -350,12 +343,8 @@ async function initFirebase() {
     const db = getDatabase(app);
     dbRef = { db, ref, get, set, remove };
     firebaseReady = true;
-    console.log("Firebase connected");
     return true;
-  } catch(err) {
-    console.error("Firebase init failed:", err);
-    return false;
-  }
+  } catch(err) { console.error("Firebase init failed:", err); return false; }
 }
 
 async function loadFromFirebase() {
@@ -365,7 +354,7 @@ async function loadFromFirebase() {
     if (snap.exists()) {
       const data = snap.val();
       const items = Array.isArray(data) ? data : Object.values(data);
-      return items.filter(d => d && d.asin).map(d => ({ ...d, asin: (d.asin || '').trim().toUpperCase() }));
+      return items.filter(d => d && d.asin).map(d => ({ ...d, asin: (d.asin || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase() }));
     }
   } catch(err) { console.error("Firebase load error:", err); }
   return null;
@@ -375,11 +364,7 @@ async function saveToFirebase(data) {
   if (!firebaseReady) return;
   try {
     await dbRef.set(dbRef.ref(dbRef.db, 'inventory/data'), data);
-    await dbRef.set(dbRef.ref(dbRef.db, 'inventory/meta'), {
-      lastUpdated: new Date().toISOString(),
-      count: data.length,
-      updatedBy: 'web-upload'
-    });
+    await dbRef.set(dbRef.ref(dbRef.db, 'inventory/meta'), { lastUpdated: new Date().toISOString(), count: data.length, updatedBy: 'web-upload' });
   } catch(err) { console.error("Firebase save error:", err); }
 }
 
@@ -399,68 +384,39 @@ async function loadReportHistory() {
 
 async function saveReportHistory(history) {
   if (!firebaseReady) return;
-  try {
-    const toSave = history.slice(0, 3);
-    await dbRef.set(dbRef.ref(dbRef.db, 'inventory/reportHistory'), toSave);
-  } catch(err) { console.error("Save history error:", err); }
+  try { await dbRef.set(dbRef.ref(dbRef.db, 'inventory/reportHistory'), history.slice(0, 3)); } catch(err) { console.error("Save history error:", err); }
 }
 
 async function saveAmazonMap(map, date) {
   if (!firebaseReady) return;
-  try {
-    await dbRef.set(dbRef.ref(dbRef.db, 'inventory/amazonMap'), { data: map, date: date });
-    console.log('Amazon map saved:', Object.keys(map).length, 'ASINs');
-  } catch(err) { console.error("Save amazonMap error:", err); }
+  try { await dbRef.set(dbRef.ref(dbRef.db, 'inventory/amazonMap'), { data: map, date: date }); } catch(err) { console.error("Save amazonMap error:", err); }
 }
 
 async function loadAmazonMap() {
   if (!firebaseReady) return null;
   try {
     const snap = await dbRef.get(dbRef.ref(dbRef.db, 'inventory/amazonMap'));
-    if (snap.exists()) {
-      const val = snap.val();
-      console.log('Amazon map loaded from cloud');
-      return val;
-    }
+    if (snap.exists()) return snap.val();
   } catch(err) { console.error("Load amazonMap error:", err); }
   return null;
 }
 
 function createStockSnapshot(data, source) {
   const stockMap = {};
-  data.forEach(d => {
-    if (d.asin) {
-      stockMap[d.asin] = {
-        qty: d.qty, inbound: d.inbound, sku: d.sku || '',
-        product: d.product || '', type: d.type || '',
-        status: d.status || '', sheet: d.sheet || ''
-      };
-    }
-  });
-  return {
-    date: new Date().toISOString(), source: source,
-    stockMap: stockMap, totalItems: data.length,
-    totalUnits: data.reduce((s, d) => s + (d.qty || 0), 0),
-    oosCount: data.filter(d => d.qty != null && d.qty === 0).length
-  };
+  data.forEach(d => { if (d.asin) stockMap[d.asin] = { qty: d.qty, inbound: d.inbound, sku: d.sku || '', product: d.product || '', type: d.type || '', status: d.status || '', sheet: d.sheet || '' }; });
+  return { date: new Date().toISOString(), source, stockMap, totalItems: data.length, totalUnits: data.reduce((s, d) => s + (d.qty || 0), 0), oosCount: data.filter(d => d.qty != null && d.qty === 0).length };
 }
 
 function compareSnapshots(current, previous) {
   if (!current || !previous) return [];
   const changes = [];
-  const curMap = current.stockMap || {};
-  const prevMap = previous.stockMap || {};
+  const curMap = current.stockMap || {}, prevMap = previous.stockMap || {};
   const allAsins = new Set([...Object.keys(curMap), ...Object.keys(prevMap)]);
-
   allAsins.forEach(asin => {
-    const cur = curMap[asin];
-    const prev = prevMap[asin];
-
-    if (cur && !prev) {
-      changes.push({ type: 'new_asin', asin, product: cur.product, itemType: cur.type, sheet: cur.sheet, qty: cur.qty, inbound: cur.inbound });
-    } else if (!cur && prev) {
-      changes.push({ type: 'removed_asin', asin, product: prev.product, itemType: prev.type, sheet: prev.sheet, prevQty: prev.qty, prevInbound: prev.inbound });
-    } else if (cur && prev) {
+    const cur = curMap[asin], prev = prevMap[asin];
+    if (cur && !prev) { changes.push({ type: 'new_asin', asin, product: cur.product, itemType: cur.type, sheet: cur.sheet, qty: cur.qty, inbound: cur.inbound }); }
+    else if (!cur && prev) { changes.push({ type: 'removed_asin', asin, product: prev.product, itemType: prev.type, sheet: prev.sheet, prevQty: prev.qty, prevInbound: prev.inbound }); }
+    else if (cur && prev) {
       const diffs = [];
       if (cur.qty !== prev.qty && cur.qty != null && prev.qty != null) diffs.push({ field: 'stock', from: prev.qty, to: cur.qty, delta: cur.qty - prev.qty });
       if (cur.inbound !== prev.inbound && cur.inbound != null && prev.inbound != null) diffs.push({ field: 'inbound', from: prev.inbound, to: cur.inbound, delta: cur.inbound - prev.inbound });
@@ -476,34 +432,20 @@ function compareSnapshots(current, previous) {
 
 function computeAllChanges() {
   changeLog = [];
-  if (reportHistory.length >= 2) {
-    changeLog.push({ label: 'Current vs Previous', fromDate: reportHistory[1].date, toDate: reportHistory[0].date, changes: compareSnapshots(reportHistory[0], reportHistory[1]) });
-  }
-  if (reportHistory.length >= 3) {
-    changeLog.push({ label: 'Previous vs Oldest', fromDate: reportHistory[2].date, toDate: reportHistory[1].date, changes: compareSnapshots(reportHistory[1], reportHistory[2]) });
-    changeLog.push({ label: 'Current vs Oldest (trend)', fromDate: reportHistory[2].date, toDate: reportHistory[0].date, changes: compareSnapshots(reportHistory[0], reportHistory[2]) });
-  }
+  if (reportHistory.length >= 2) changeLog.push({ label: 'Current vs Previous', fromDate: reportHistory[1].date, toDate: reportHistory[0].date, changes: compareSnapshots(reportHistory[0], reportHistory[1]) });
+  if (reportHistory.length >= 3) changeLog.push({ label: 'Previous vs Oldest', fromDate: reportHistory[2].date, toDate: reportHistory[1].date, changes: compareSnapshots(reportHistory[1], reportHistory[2]) });
+  if (reportHistory.length >= 3) changeLog.push({ label: 'Current vs Oldest (trend)', fromDate: reportHistory[2].date, toDate: reportHistory[0].date, changes: compareSnapshots(reportHistory[0], reportHistory[2]) });
 }
 
 function updateTimeline() {
-  const tl = document.getElementById('report-timeline');
-  const slots = document.getElementById('timeline-slots');
-  const info = document.getElementById('report-info');
-  const infoText = document.getElementById('report-info-text');
+  const tl = document.getElementById('report-timeline'), slots = document.getElementById('timeline-slots'), info = document.getElementById('report-info'), infoText = document.getElementById('report-info-text');
   if (reportHistory.length === 0) { tl.style.display = 'none'; info.style.display = 'none'; return; }
   tl.style.display = 'flex'; info.style.display = 'flex';
   infoText.textContent = reportHistory.length + ' snapshot' + (reportHistory.length > 1 ? 's' : '') + ' stored';
   const labels = ['Current', 'Previous', 'Oldest'];
-  slots.innerHTML = reportHistory.map((r, i) => {
-    const d = new Date(r.date);
-    const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-    return `<div class="report-slot ${i === 0 ? 'active' : ''}"><span class="rs-label">${labels[i]}</span><span class="rs-date">${dateStr}</span><span class="rs-count">${r.totalItems} items · ${r.totalUnits} units</span></div>`;
-  }).join('');
+  slots.innerHTML = reportHistory.map((r, i) => { const d = new Date(r.date); const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); return `<div class="report-slot ${i === 0 ? 'active' : ''}"><span class="rs-label">${labels[i]}</span><span class="rs-date">${dateStr}</span><span class="rs-count">${r.totalItems} items · ${r.totalUnits} units</span></div>`; }).join('');
 }
 
-// ═══════════════════════════════════════════
-// MAIN DATA & STATE
-// ═══════════════════════════════════════════
 let D = [], PS = 50, CP = 1, SF = 'product', SD = 1, F = [], SKF = 'all', GRP = false;
 const CL = ['#4f8ef7','#00d4a0','#ff9f43','#a77bfa','#f7576c','#38bdf8','#fbbf24'];
 
@@ -518,45 +460,23 @@ async function init() {
       if (fbData && fbData.length > 0) {
         D = fbData;
         const meta = await loadMeta();
-        if (meta && meta.lastUpdated) {
-          const d = new Date(meta.lastUpdated);
-          document.getElementById('hsub-text').textContent = `Last updated: ${d.toLocaleDateString()} ${d.toLocaleTimeString()} · ${D.length} items`;
-        } else {
-          document.getElementById('hsub-text').textContent = `Loaded ${D.length} items from cloud`;
-        }
+        if (meta && meta.lastUpdated) { const d = new Date(meta.lastUpdated); document.getElementById('hsub-text').textContent = `Last updated: ${d.toLocaleDateString()} ${d.toLocaleTimeString()} · ${D.length} items`; }
+        else document.getElementById('hsub-text').textContent = `Loaded ${D.length} items from cloud`;
         toast('Loaded from cloud: ' + D.length + ' items');
-      } else {
-        document.getElementById('hsub-text').textContent = 'No data in cloud — upload files to start';
-      }
+      } else document.getElementById('hsub-text').textContent = 'No data in cloud — upload files to start';
       reportHistory = await loadReportHistory();
-      computeAllChanges();
-      updateTimeline();
+      computeAllChanges(); updateTimeline();
       const savedAmazonMap = await loadAmazonMap();
-      if (savedAmazonMap && savedAmazonMap.data) {
-        window._amazonMap = savedAmazonMap.data;
-        window._amazonReportDate = savedAmazonMap.date;
-      }
-    } catch(err) {
-      console.error('Init load error:', err);
-      document.getElementById('hsub-text').textContent = 'Cloud error — upload files to reload data';
-      toast('Cloud error: ' + err.message);
-    }
-  } else {
-    document.getElementById('hsub-text').textContent = 'Firebase unavailable — upload files to start';
-  }
-  if (!D.length && RAW.length) {
-    D = [...RAW];
-    document.getElementById('hsub-text').textContent = `Fallback data: ${D.length} items — upload fresh reports`;
-  }
+      if (savedAmazonMap && savedAmazonMap.data) { window._amazonMap = savedAmazonMap.data; window._amazonReportDate = savedAmazonMap.date; }
+    } catch(err) { document.getElementById('hsub-text').textContent = 'Cloud error — upload files to reload data'; toast('Cloud error: ' + err.message); }
+  } else document.getElementById('hsub-text').textContent = 'Firebase unavailable — upload files to start';
+  if (!D.length && RAW.length) { D = [...RAW]; document.getElementById('hsub-text').textContent = `Fallback data: ${D.length} items — upload fresh reports`; }
   popF(); upS(); apply(); upTabs();
 }
 
 async function loadMeta() {
   if (!firebaseReady) return null;
-  try {
-    const snap = await dbRef.get(dbRef.ref(dbRef.db, 'inventory/meta'));
-    if (snap.exists()) return snap.val();
-  } catch(err) {}
+  try { const snap = await dbRef.get(dbRef.ref(dbRef.db, 'inventory/meta')); if (snap.exists()) return snap.val(); } catch(err) {}
   return null;
 }
 
@@ -607,11 +527,12 @@ function apply(rp) {
     if (status && d.status !== status) return false;
     if (q) {
       var p = (d.product || '').toLowerCase();
-      var a = (d.asin || '').trim().toLowerCase();
+      var a = (d.asin || '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
       var sk = (d.sku || '').trim().toLowerCase();
-      if (p.indexOf(q) < 0 && a.indexOf(q) < 0 && sk.indexOf(q) < 0) return false;
+      var qClean = q.replace(/[^A-Za-z0-9]/g, '');
+      if (p.indexOf(q) < 0 && a.indexOf(qClean) < 0 && sk.indexOf(q) < 0) return false;
     }
-    if (SKF !== 'all') {
+    if (SKF !== 'all' && !q) {
       var qty = d.qty != null ? Number(d.qty) : null;
       if (qty == null) return false;
       if (SKF === 'instock' && qty <= 0) return false;
@@ -621,18 +542,22 @@ function apply(rp) {
     return true;
   });
   F.sort(function(a, b) {
-    if (SF === 'qty' || SF === 'inbound') {
-      var av = a[SF] != null ? Number(a[SF]) : -999;
-      var bv = b[SF] != null ? Number(b[SF]) : -999;
-      return (av - bv) * SD;
-    }
+    if (SF === 'qty' || SF === 'inbound') { var av = a[SF] != null ? Number(a[SF]) : -999; var bv = b[SF] != null ? Number(b[SF]) : -999; return (av - bv) * SD; }
     return ((a[SF] || '').localeCompare(b[SF] || '')) * SD;
   });
   if (rp) CP = 1;
   render(); rAF();
+  if (rp && !document.getElementById('search').matches(':focus')) scrollToTable();
 }
 
-function srt(f) { if (SF === f) SD *= -1; else { SF = f; SD = 1; } document.querySelectorAll('thead th').forEach(t => t.classList.remove('sd')); const th = document.getElementById('th-' + f); if (th) { th.classList.add('sd'); const si = th.querySelector('.si'); if (si) si.textContent = SD === 1 ? '▲' : '▼'; } apply(false); }
+function scrollToTable() {
+  const tb = document.getElementById('tbody');
+  if (!tb) return;
+  const rect = tb.getBoundingClientRect();
+  if (rect.top < 110) window.scrollTo({ top: rect.top + window.scrollY - 100, behavior: 'smooth' });
+}
+
+function srt(f) { if (SF === f) SD *= -1; else { SF = f; SD = 1; } document.querySelectorAll('thead th').forEach(t => t.classList.remove('sd')); const th = document.getElementById('th-' + f); if (th) { th.classList.add('sd'); const si = th.querySelector('.si'); if (si) si.textContent = SD === 1 ? '▲' : '▼'; } apply(); scrollToTable(); }
 
 function render() {
   const tb = document.getElementById('tbody'), em = document.getElementById('empty');
@@ -696,16 +621,10 @@ function rPag(total) { const pages = Math.ceil(total / PS), p = document.getElem
 function goP(p) {
   CP = p; render();
   const tb = document.getElementById('tbody');
-  if (tb) {
-    const top = tb.getBoundingClientRect().top + window.scrollY - 80;
-    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-  }
+  if (tb) { const top = tb.getBoundingClientRect().top + window.scrollY - 100; window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
 }
 function chPP() { PS = parseInt(document.getElementById('pp').value); CP = 1; render(); }
 
-// ═══════════════════════════════════════════
-// UPLOAD STOCK — with snapshot creation
-// ═══════════════════════════════════════════
 function uploadStock(input) {
   const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
@@ -727,7 +646,6 @@ function uploadStock(input) {
         if (['recommended action', 'recommendedaction'].includes(h)) rai = i;
       });
       if (ai < 0) throw new Error('No ASIN column'); if (qi < 0) throw new Error('No quantity column');
-
       const newMap = {};
       for (let i = 1; i < parsed.length; i++) {
         const c = parsed[i]; if (!c || c.length < 2) continue;
@@ -740,38 +658,23 @@ function uploadStock(input) {
         if (!newMap[a]) newMap[a] = { qty: q, sku: sk, inbound: inb, alert: alert, recAction: recAction };
         else { newMap[a].qty += q; if (inb !== null) newMap[a].inbound = (newMap[a].inbound || 0) + inb; }
       }
-
-      window._amazonMap = newMap;
-      window._amazonReportDate = new Date().toISOString();
+      window._amazonMap = newMap; window._amazonReportDate = new Date().toISOString();
       await saveAmazonMap(newMap, window._amazonReportDate);
-
       let m = 0;
-      D.forEach(d => {
-        const n = newMap[d.asin];
-        if (n) { d.qty = n.qty; d.inbound = n.inbound; if (n.sku) d.sku = n.sku; m++; }
-      });
-
+      D.forEach(d => { const n = newMap[d.asin]; if (n) { d.qty = n.qty; d.inbound = n.inbound; if (n.sku) d.sku = n.sku; m++; } });
       const snapshot = createStockSnapshot(D, 'stock');
       reportHistory.unshift(snapshot);
       if (reportHistory.length > 3) reportHistory = reportHistory.slice(0, 3);
-      computeAllChanges();
-      updateTimeline();
-
+      computeAllChanges(); updateTimeline();
       upS(); apply(); rR = false; cR = false; hR = false; aR = false; upTabs();
-      await saveToFirebase(D);
-      await saveReportHistory(reportHistory);
-
+      await saveToFirebase(D); await saveReportHistory(reportHistory);
       setU('stock', `✓ ${m} matched · snapshot saved`);
       toast(`Stock: ${m} ASINs · ${reportHistory.length} snapshots`);
-
     } catch(err) { setU('stock', err.message, true); }
   };
   reader.readAsText(file); input.value = '';
 }
 
-// ═══════════════════════════════════════════
-// UPLOAD XLSX
-// ═══════════════════════════════════════════
 function uploadXlsx(input) {
   const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
@@ -791,7 +694,7 @@ function uploadXlsx(input) {
           const prod = String(row[0]).trim();
           ptypes.forEach(([ti, tn]) => {
             const si = ti - 1;
-            const asin = String(row[ti] || '').trim().toUpperCase();
+            const asin = String(row[ti] || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
             const status = String(row[si] || '').trim();
             if (!asin || asin === 'NA') return;
             if (!status) return;
@@ -800,26 +703,15 @@ function uploadXlsx(input) {
         }
       });
       if (!items.length) throw new Error('No valid rows');
-
       const oldData = {}; D.forEach(d => { if (d.asin) oldData[d.asin] = { qty: d.qty, inbound: d.inbound, sku: d.sku }; });
-      items.forEach(d => {
-        const old = oldData[d.asin];
-        if (old) { d.qty = old.qty; d.inbound = old.inbound; d.sku = old.sku || ''; }
-        else { d.qty = null; d.inbound = null; d.sku = ''; }
-      });
-
+      items.forEach(d => { const old = oldData[d.asin]; if (old) { d.qty = old.qty; d.inbound = old.inbound; d.sku = old.sku || ''; } else { d.qty = null; d.inbound = null; d.sku = ''; } });
       D = items;
-
       const snapshot = createStockSnapshot(D, 'listings');
       reportHistory.unshift(snapshot);
       if (reportHistory.length > 3) reportHistory = reportHistory.slice(0, 3);
-      computeAllChanges();
-      updateTimeline();
-
+      computeAllChanges(); updateTimeline();
       popF(); upS(); apply(); rR = false; cR = false; hR = false; aR = false; upTabs();
-      await saveToFirebase(D);
-      await saveReportHistory(reportHistory);
-
+      await saveToFirebase(D); await saveReportHistory(reportHistory);
       setU('list', `✓ ${D.length} listings · snapshot saved`);
       toast(`Loaded ${D.length} from ${file.name}`);
     } catch(err) { setU('list', err.message, true); }
@@ -827,14 +719,12 @@ function uploadXlsx(input) {
   reader.readAsArrayBuffer(file); input.value = '';
 }
 
-// ── Export ──
 function exportCSV() {
   let h = 'Product,Type,ASIN,Status,Category,Stock,Inbound,SKU\n';
   const rows = F.map(d => `"${(d.product || '').replace(/"/g, '""')}","${d.type}","${d.asin}","${d.status}","${d.sheet}",${d.qty ?? ''},${d.inbound ?? ''},"${(d.sku || '').replace(/"/g, '""')}"`).join('\n');
   const b = new Blob([h + rows], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `fba_inventory_${new Date().toISOString().slice(0, 10)}.csv`; a.click(); toast(`Exported ${F.length} items`);
 }
 
-// ── Tabs ──
 function tab(id) {
   document.querySelectorAll('.tb').forEach(b => b.classList.remove('on'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
@@ -846,7 +736,6 @@ function tab(id) {
   if (id === 'analytics') renderAnalytics();
 }
 
-// ── Restock ──
 let rR = false;
 function renderRestock() {
   if (rR) return; rR = true;
@@ -857,50 +746,20 @@ function renderRestock() {
   const low = wq.filter(d => d.qty > 0 && d.qty < 10).sort((a, b) => a.qty - b.qty);
   const totalOOS = oosNeedReorder.length + oosInTransit.length;
   let h = `<h2>Restock Alerts</h2><div class="rsub">${totalOOS} out of stock (${oosNeedReorder.length} need reorder, ${oosInTransit.length} in transit) · ${low.length} low stock</div>`;
-  if (oosNeedReorder.length) {
-    h += `<div class="rcard" style="border-color:var(--dnbd)"><h3 class="oos-h">🚨 Need Reorder — ${oosNeedReorder.length} items</h3><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Category</th><th>Status</th></tr></thead><tbody>`;
-    oosNeedReorder.forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="cat">${esc(d.sheet)}</span></td><td><span class="badge ${bCls(d.status)}">${d.status}</span></td></tr>`; });
-    h += `</tbody></table><button class="rbtn" onclick="exportRestock('reorder')">Export Reorder list as CSV</button></div>`;
-  }
-  if (oosInTransit.length) {
-    h += `<div class="rcard" style="border-color:var(--acbd)"><h3 style="color:var(--ac)">📦 In Transit — ${oosInTransit.length} items</h3><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Category</th><th class="num">Inbound</th></tr></thead><tbody>`;
-    oosInTransit.forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="cat">${esc(d.sheet)}</span></td><td class="num" style="color:var(--ac);font-weight:600">${d.inbound}</td></tr>`; });
-    h += `</tbody></table><button class="rbtn" onclick="exportRestock('transit')">Export In Transit list as CSV</button></div>`;
-  }
-  if (low.length) {
-    h += `<div class="rcard"><h3 class="low-h">⚡ Low Stock — ${low.length} items (&lt;10 units)</h3><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Category</th><th class="num">Stock</th><th class="num">Inbound</th></tr></thead><tbody>`;
-    low.forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="cat">${esc(d.sheet)}</span></td><td class="num" style="color:var(--mfn)">${d.qty}</td><td class="num" style="color:${d.inbound > 0 ? 'var(--ac)' : 'var(--bdl)'}">${d.inbound || 0}</td></tr>`; });
-    h += `</tbody></table><button class="rbtn" onclick="exportRestock('low')">Export Low Stock list as CSV</button></div>`;
-  }
+  if (oosNeedReorder.length) { h += `<div class="rcard" style="border-color:var(--dnbd)"><h3 class="oos-h">🚨 Need Reorder — ${oosNeedReorder.length} items</h3><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Category</th><th>Status</th></tr></thead><tbody>`; oosNeedReorder.forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="cat">${esc(d.sheet)}</span></td><td><span class="badge ${bCls(d.status)}">${d.status}</span></td></tr>`; }); h += `</tbody></table><button class="rbtn" onclick="exportRestock('reorder')">Export Reorder list as CSV</button></div>`; }
+  if (oosInTransit.length) { h += `<div class="rcard" style="border-color:var(--acbd)"><h3 style="color:var(--ac)">📦 In Transit — ${oosInTransit.length} items</h3><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Category</th><th class="num">Inbound</th></tr></thead><tbody>`; oosInTransit.forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="cat">${esc(d.sheet)}</span></td><td class="num" style="color:var(--ac);font-weight:600">${d.inbound}</td></tr>`; }); h += `</tbody></table><button class="rbtn" onclick="exportRestock('transit')">Export In Transit list as CSV</button></div>`; }
+  if (low.length) { h += `<div class="rcard"><h3 class="low-h">⚡ Low Stock — ${low.length} items (&lt;10 units)</h3><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Category</th><th class="num">Stock</th><th class="num">Inbound</th></tr></thead><tbody>`; low.forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="cat">${esc(d.sheet)}</span></td><td class="num" style="color:var(--mfn)">${d.qty}</td><td class="num" style="color:${d.inbound > 0 ? 'var(--ac)' : 'var(--bdl)'}">${d.inbound || 0}</td></tr>`; }); h += `</tbody></table><button class="rbtn" onclick="exportRestock('low')">Export Low Stock list as CSV</button></div>`; }
   if (!totalOOS && !low.length) h += `<div class="empty">All items are well-stocked!</div>`;
   c.innerHTML = h;
 }
-function exportRestock(type){
-  const wq=D.filter(d=>d.qty!=null);
-  let items;
-  if(type==='reorder') items=wq.filter(d=>d.qty===0&&(!d.inbound||d.inbound===0));
-  else if(type==='transit') items=wq.filter(d=>d.qty===0&&d.inbound>0);
-  else items=wq.filter(d=>d.qty>0&&d.qty<10);
-  let h='Product,Type,ASIN,Status,Category,Stock,Inbound\n';
-  const rows=items.map(d=>`"${(d.product||'').replace(/"/g,'""')}","${d.type}","${d.asin}","${d.status}","${d.sheet}",${d.qty},${d.inbound||0}`).join('\n');
-  const b=new Blob([h+rows],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`restock_${type}_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast(`Exported ${items.length} items`);
-}
+function exportRestock(type){ const wq=D.filter(d=>d.qty!=null); let items; if(type==='reorder') items=wq.filter(d=>d.qty===0&&(!d.inbound||d.inbound===0)); else if(type==='transit') items=wq.filter(d=>d.qty===0&&d.inbound>0); else items=wq.filter(d=>d.qty>0&&d.qty<10); let h='Product,Type,ASIN,Status,Category,Stock,Inbound\n'; const rows=items.map(d=>`"${(d.product||'').replace(/"/g,'""')}","${d.type}","${d.asin}","${d.status}","${d.sheet}",${d.qty},${d.inbound||0}`).join('\n'); const b=new Blob([h+rows],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`restock_${type}_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast(`Exported ${items.length} items`); }
 
-// ═══════════════════════════════════════════
-// CONFLICTS/CHANGES
-// ═══════════════════════════════════════════
 let cR = false;
 function renderConflicts() {
   if (cR) return; cR = true;
   const cont = document.getElementById('conflicts-content');
-
-  if (changeLog.length === 0) {
-    cont.innerHTML = `<h2>Report Changes</h2><div class="rsub">Upload at least 2 stock reports to see changes between them.</div><div class="empty">No report history yet — upload your first stock report to start tracking changes.</div>`;
-    return;
-  }
-
+  if (changeLog.length === 0) { cont.innerHTML = `<h2>Report Changes</h2><div class="rsub">Upload at least 2 stock reports to see changes between them.</div><div class="empty">No report history yet — upload your first stock report to start tracking changes.</div>`; return; }
   let h = `<h2>Report Changes</h2><div class="rsub">Comparing ${reportHistory.length} snapshots · Changes are detected automatically when you upload new reports</div>`;
-
   if (changeLog.length > 0) {
     const latest = changeLog[0];
     const wentOos = latest.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'went_oos'));
@@ -909,181 +768,66 @@ function renderConflicts() {
     const stockUp = latest.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'stock' && df.delta > 0));
     const newAs = latest.changes.filter(ch => ch.type === 'new_asin');
     const removedAs = latest.changes.filter(ch => ch.type === 'removed_asin');
-    h += `<div class="ss">
-      <div class="ssc"><div class="ssc-v" style="color:var(--dn)">${wentOos.length}</div><div class="ssc-l">Went OOS</div></div>
-      <div class="ssc"><div class="ssc-v" style="color:var(--fba)">${backInStock.length}</div><div class="ssc-l">Back in Stock</div></div>
-      <div class="ssc"><div class="ssc-v" style="color:var(--mfn)">${stockDown.length}</div><div class="ssc-l">Stock Decreased</div></div>
-      <div class="ssc"><div class="ssc-v" style="color:var(--ac)">${stockUp.length}</div><div class="ssc-l">Stock Increased</div></div>
-      <div class="ssc"><div class="ssc-v" style="color:var(--pp)">${newAs.length}</div><div class="ssc-l">New ASINs</div></div>
-      <div class="ssc"><div class="ssc-v" style="color:var(--dn)">${removedAs.length}</div><div class="ssc-l">Removed ASINs</div></div>
-    </div>`;
+    h += `<div class="ss"><div class="ssc"><div class="ssc-v" style="color:var(--dn)">${wentOos.length}</div><div class="ssc-l">Went OOS</div></div><div class="ssc"><div class="ssc-v" style="color:var(--fba)">${backInStock.length}</div><div class="ssc-l">Back in Stock</div></div><div class="ssc"><div class="ssc-v" style="color:var(--mfn)">${stockDown.length}</div><div class="ssc-l">Stock Decreased</div></div><div class="ssc"><div class="ssc-v" style="color:var(--ac)">${stockUp.length}</div><div class="ssc-l">Stock Increased</div></div><div class="ssc"><div class="ssc-v" style="color:var(--pp)">${newAs.length}</div><div class="ssc-l">New ASINs</div></div><div class="ssc"><div class="ssc-v" style="color:var(--dn)">${removedAs.length}</div><div class="ssc-l">Removed ASINs</div></div></div>`;
   }
-
   changeLog.forEach((log, logIdx) => {
-    const fromD = new Date(log.fromDate);
-    const toD = new Date(log.toDate);
+    const fromD = new Date(log.fromDate), toD = new Date(log.toDate);
     const fromStr = fromD.toLocaleDateString() + ' ' + fromD.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     const toStr = toD.toLocaleDateString() + ' ' + toD.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-
-    if (log.changes.length === 0) {
-      h += `<div class="ccard"><h3 style="color:var(--fba)">✓ ${log.label}: No changes</h3><p style="font-size:10px;color:var(--m)">${fromStr} → ${toStr}</p></div>`;
-      return;
-    }
-
+    if (log.changes.length === 0) { h += `<div class="ccard"><h3 style="color:var(--fba)">✓ ${log.label}: No changes</h3><p style="font-size:10px;color:var(--m)">${fromStr} → ${toStr}</p></div>`; return; }
     h += `<div class="ccard" style="border-color:${logIdx === 0 ? 'var(--ylbd)' : 'var(--bd)'}">`;
     h += `<h3 style="color:${logIdx === 0 ? 'var(--yl)' : 'var(--m)'}">${logIdx === 0 ? '⚠' : '📋'} ${log.label} <span class="conflict-count" style="background:${logIdx === 0 ? 'var(--ylb)' : 'var(--s3)'}; color:${logIdx === 0 ? 'var(--yl)' : 'var(--m)'}">${log.changes.length} changes</span></h3>`;
     h += `<p style="font-size:10px;color:var(--m);margin-bottom:12px">${fromStr} → ${toStr}</p>`;
-
     const wentOos = log.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'went_oos'));
     const backInStock = log.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'back_in_stock'));
     const stockChanges = log.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'stock') && !ch.diffs.some(df => df.field === 'went_oos' || df.field === 'back_in_stock'));
     const statusChanges = log.changes.filter(ch => ch.type === 'changed' && ch.diffs.some(df => df.field === 'status'));
     const newAsins = log.changes.filter(ch => ch.type === 'new_asin');
     const removedAsins = log.changes.filter(ch => ch.type === 'removed_asin');
-
-    if (wentOos.length) {
-      h += `<div class="conflict-section"><h3 style="color:var(--dn);font-size:10px">🚨 WENT OUT OF STOCK — ${wentOos.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Before</th><th style="text-align:right">Now</th></tr></thead><tbody>`;
-      wentOos.slice(0, 50).forEach(ch => {
-        const df = ch.diffs.find(x => x.field === 'went_oos') || ch.diffs.find(x => x.field === 'stock');
-        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${ch.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${ch.asin}</a></td><td class="delta-down" style="text-align:right">${df ? df.from : '?'}</td><td style="text-align:right;color:var(--dn);font-weight:700;font-family:IBM Plex Mono">0</td></tr>`;
-      });
-      h += `</tbody></table></div>`;
-    }
-    if (backInStock.length) {
-      h += `<div class="conflict-section"><h3 style="color:var(--fba);font-size:10px">✅ BACK IN STOCK — ${backInStock.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Now</th></tr></thead><tbody>`;
-      backInStock.slice(0, 50).forEach(ch => {
-        const df = ch.diffs.find(x => x.field === 'back_in_stock') || ch.diffs.find(x => x.field === 'stock');
-        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${ch.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${ch.asin}</a></td><td class="delta-up" style="text-align:right">${df ? df.to : '?'}</td></tr>`;
-      });
-      h += `</tbody></table></div>`;
-    }
-    if (stockChanges.length) {
-      h += `<div class="conflict-section"><h3 style="color:var(--mfn);font-size:10px">📊 STOCK CHANGES — ${stockChanges.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Before</th><th style="text-align:right">Now</th><th style="text-align:right">Δ</th></tr></thead><tbody>`;
-      stockChanges.sort((a, b) => { const da = a.diffs.find(x => x.field === 'stock'); const db = b.diffs.find(x => x.field === 'stock'); return (da ? da.delta : 0) - (db ? db.delta : 0); }).slice(0, 50).forEach(ch => {
-        const df = ch.diffs.find(x => x.field === 'stock'); if (!df) return;
-        const cls = df.delta > 0 ? 'delta-up' : 'delta-down'; const sign = df.delta > 0 ? '+' : '';
-        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px">${ch.asin}</td><td style="text-align:right;font-family:IBM Plex Mono;color:var(--m)">${df.from}</td><td style="text-align:right;font-family:IBM Plex Mono">${df.to}</td><td class="${cls}" style="text-align:right">${sign}${df.delta}</td></tr>`;
-      });
-      h += `</tbody></table></div>`;
-    }
-    if (statusChanges.length) {
-      h += `<div class="conflict-section"><h3 style="color:var(--pp);font-size:10px">🔄 STATUS CHANGES — ${statusChanges.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Before</th><th>Now</th></tr></thead><tbody>`;
-      statusChanges.slice(0, 30).forEach(ch => {
-        const df = ch.diffs.find(x => x.field === 'status'); if (!df) return;
-        h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px">${ch.asin}</td><td><span class="badge ${bCls(df.from)}">${df.from}</span></td><td><span class="badge ${bCls(df.to)}">${df.to}</span></td></tr>`;
-      });
-      h += `</tbody></table></div>`;
-    }
-    if (newAsins.length) {
-      h += `<div class="conflict-section"><h3 style="color:var(--ac);font-size:10px">🆕 NEW ASINS — ${newAsins.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Stock</th></tr></thead><tbody>`;
-      newAsins.slice(0, 50).forEach(ch => { h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${ch.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${ch.asin}</a></td><td class="delta-new" style="text-align:right">${ch.qty != null ? ch.qty : '—'}</td></tr>`; });
-      h += `</tbody></table></div>`;
-    }
-    if (removedAsins.length) {
-      h += `<div class="conflict-section"><h3 style="color:var(--dn);font-size:10px">❌ REMOVED ASINS — ${removedAsins.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Had Stock</th></tr></thead><tbody>`;
-      removedAsins.slice(0, 50).forEach(ch => { h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px" class="delta-gone">${ch.asin}</td><td style="text-align:right;font-family:IBM Plex Mono;color:var(--m)">${ch.prevQty != null ? ch.prevQty : '—'}</td></tr>`; });
-      h += `</tbody></table></div>`;
-    }
+    if (wentOos.length) { h += `<div class="conflict-section"><h3 style="color:var(--dn);font-size:10px">🚨 WENT OUT OF STOCK — ${wentOos.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Before</th><th style="text-align:right">Now</th></tr></thead><tbody>`; wentOos.slice(0, 50).forEach(ch => { const df = ch.diffs.find(x => x.field === 'went_oos') || ch.diffs.find(x => x.field === 'stock'); h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${ch.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${ch.asin}</a></td><td class="delta-down" style="text-align:right">${df ? df.from : '?'}</td><td style="text-align:right;color:var(--dn);font-weight:700;font-family:IBM Plex Mono">0</td></tr>`; }); h += `</tbody></table></div>`; }
+    if (backInStock.length) { h += `<div class="conflict-section"><h3 style="color:var(--fba);font-size:10px">✅ BACK IN STOCK — ${backInStock.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Now</th></tr></thead><tbody>`; backInStock.slice(0, 50).forEach(ch => { const df = ch.diffs.find(x => x.field === 'back_in_stock') || ch.diffs.find(x => x.field === 'stock'); h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${ch.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${ch.asin}</a></td><td class="delta-up" style="text-align:right">${df ? df.to : '?'}</td></tr>`; }); h += `</tbody></table></div>`; }
+    if (stockChanges.length) { h += `<div class="conflict-section"><h3 style="color:var(--mfn);font-size:10px">📊 STOCK CHANGES — ${stockChanges.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Before</th><th style="text-align:right">Now</th><th style="text-align:right">Δ</th></tr></thead><tbody>`; stockChanges.sort((a, b) => { const da = a.diffs.find(x => x.field === 'stock'); const db = b.diffs.find(x => x.field === 'stock'); return (da ? da.delta : 0) - (db ? db.delta : 0); }).slice(0, 50).forEach(ch => { const df = ch.diffs.find(x => x.field === 'stock'); if (!df) return; const cls = df.delta > 0 ? 'delta-up' : 'delta-down'; const sign = df.delta > 0 ? '+' : ''; h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px">${ch.asin}</td><td style="text-align:right;font-family:IBM Plex Mono;color:var(--m)">${df.from}</td><td style="text-align:right;font-family:IBM Plex Mono">${df.to}</td><td class="${cls}" style="text-align:right">${sign}${df.delta}</td></tr>`; }); h += `</tbody></table></div>`; }
+    if (statusChanges.length) { h += `<div class="conflict-section"><h3 style="color:var(--pp);font-size:10px">🔄 STATUS CHANGES — ${statusChanges.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Before</th><th>Now</th></tr></thead><tbody>`; statusChanges.slice(0, 30).forEach(ch => { const df = ch.diffs.find(x => x.field === 'status'); if (!df) return; h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px">${ch.asin}</td><td><span class="badge ${bCls(df.from)}">${df.from}</span></td><td><span class="badge ${bCls(df.to)}">${df.to}</span></td></tr>`; }); h += `</tbody></table></div>`; }
+    if (newAsins.length) { h += `<div class="conflict-section"><h3 style="color:var(--ac);font-size:10px">🆕 NEW ASINS — ${newAsins.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Stock</th></tr></thead><tbody>`; newAsins.slice(0, 50).forEach(ch => { h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${ch.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${ch.asin}</a></td><td class="delta-new" style="text-align:right">${ch.qty != null ? ch.qty : '—'}</td></tr>`; }); h += `</tbody></table></div>`; }
+    if (removedAsins.length) { h += `<div class="conflict-section"><h3 style="color:var(--dn);font-size:10px">❌ REMOVED ASINS — ${removedAsins.length}</h3><table class="ctable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th style="text-align:right">Had Stock</th></tr></thead><tbody>`; removedAsins.slice(0, 50).forEach(ch => { h += `<tr><td>${esc(ch.product)}</td><td style="font-size:10px;color:var(--td)">${esc(ch.itemType)}</td><td style="font-family:IBM Plex Mono;font-size:10px" class="delta-gone">${ch.asin}</td><td style="text-align:right;font-family:IBM Plex Mono;color:var(--m)">${ch.prevQty != null ? ch.prevQty : '—'}</td></tr>`; }); h += `</tbody></table></div>`; }
     h += `</div>`;
   });
-
-  if (changeLog.length > 0 && changeLog[0].changes.length > 0) {
-    h += `<button class="rbtn" onclick="exportChanges()">Export all changes as CSV</button>`;
-  }
+  if (changeLog.length > 0 && changeLog[0].changes.length > 0) h += `<button class="rbtn" onclick="exportChanges()">Export all changes as CSV</button>`;
   cont.innerHTML = h;
 }
-function exportChanges(){
-  if(!changeLog.length||!changeLog[0].changes.length)return;
-  const ch=changeLog[0].changes;
-  let csv='Type,Product,ItemType,ASIN,Field,From,To,Delta\n';
-  ch.forEach(c=>{
-    if(c.type==='new_asin') csv+=`"New","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","—","—","${c.qty!=null?c.qty:''}",""\n`;
-    else if(c.type==='removed_asin') csv+=`"Removed","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","—","${c.prevQty!=null?c.prevQty:''}","—",""\n`;
-    else if(c.type==='changed') c.diffs.forEach(d=>{ csv+=`"Changed","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","${d.field}","${d.from!=null?d.from:''}","${d.to!=null?d.to:''}","${d.delta!=null?d.delta:''}"\n`; });
-  });
-  const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`changes_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast(`Exported ${ch.length} changes`);
-}
+function exportChanges(){ if(!changeLog.length||!changeLog[0].changes.length)return; const ch=changeLog[0].changes; let csv='Type,Product,ItemType,ASIN,Field,From,To,Delta\n'; ch.forEach(c=>{ if(c.type==='new_asin') csv+=`"New","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","—","—","${c.qty!=null?c.qty:''}",""\n`; else if(c.type==='removed_asin') csv+=`"Removed","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","—","${c.prevQty!=null?c.prevQty:''}","—",""\n`; else if(c.type==='changed') c.diffs.forEach(d=>{ csv+=`"Changed","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","${d.field}","${d.from!=null?d.from:''}","${d.to!=null?d.to:''}","${d.delta!=null?d.delta:''}"\n`; }); }); const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`changes_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast(`Exported ${ch.length} changes`); }
 
-// ── Health Check ──
 let hR = false;
 function renderHealth() {
   if (hR) return; hR = true;
   const cont = document.getElementById('health-content');
   const am = window._amazonMap;
-  if (!am) {
-    cont.innerHTML = `<h2>Health Check</h2><div class="rsub">Upload an Amazon stock report first to run the audit.</div><div class="empty">No Amazon report data available. Upload a Stock Report (.txt/.tsv) to enable the health check.</div>`;
-    hR = false;
-    return;
-  }
-  if (!D.length) {
-    cont.innerHTML = `<h2>Health Check</h2><div class="rsub">Upload a Listings file first.</div>`;
-    hR = false;
-    return;
-  }
+  if (!am) { cont.innerHTML = `<h2>Health Check</h2><div class="rsub">Upload an Amazon stock report first to run the audit.</div><div class="empty">No Amazon report data available.</div>`; hR = false; return; }
+  if (!D.length) { cont.innerHTML = `<h2>Health Check</h2><div class="rsub">Upload a Listings file first.</div>`; hR = false; return; }
   const listingAsins = new Set(D.map(d => d.asin));
   const amazonAsins = new Set(Object.keys(am));
   const inSheetsOnly = D.filter(d => !amazonAsins.has(d.asin));
   const inAmazonOnly = Object.entries(am).filter(([a]) => !listingAsins.has(a)).map(([a, info]) => ({ asin: a, ...(typeof info === 'object' ? info : {qty:0}) }));
-
   const sheetProdCount = {}; D.forEach(d => { sheetProdCount[d.product] = (sheetProdCount[d.product] || 0) + 1; });
   const asinToProduct = {}; D.forEach(d => { asinToProduct[d.asin] = d.product; });
   const amazonProdCount = {}; Object.keys(am).forEach(a => { const p = asinToProduct[a]; if (p) amazonProdCount[p] = (amazonProdCount[p] || 0) + 1; });
   const variantMismatch = [];
-  Object.keys(sheetProdCount).forEach(p => {
-    const sc = sheetProdCount[p]; const ac = amazonProdCount[p] || 0;
-    if (sc !== ac) variantMismatch.push({ product: p, sheets: sc, amazon: ac, diff: sc - ac });
-  });
+  Object.keys(sheetProdCount).forEach(p => { const sc = sheetProdCount[p]; const ac = amazonProdCount[p] || 0; if (sc !== ac) variantMismatch.push({ product: p, sheets: sc, amazon: ac, diff: sc - ac }); });
   variantMismatch.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
-
   const issues = inSheetsOnly.length + inAmazonOnly.length + variantMismatch.length;
   document.getElementById('hc').textContent = issues || '✓';
   if (issues > 0) document.getElementById('t-health').classList.add('alert');
-
   const reportDate = window._amazonReportDate ? new Date(window._amazonReportDate).toLocaleDateString() : '';
   let h = `<h2>Health Check</h2><div class="rsub">Audit: Sheets vs Amazon · ${issues} issues found${reportDate ? ' · Report: '+reportDate : ''}</div>`;
-  h += `<div class="ss">
-    <div class="ssc"><div class="ssc-v" style="color:${inSheetsOnly.length ? 'var(--dn)' : 'var(--fba)'}">${inSheetsOnly.length}</div><div class="ssc-l">In Sheets, not on Amazon</div></div>
-    <div class="ssc"><div class="ssc-v" style="color:${inAmazonOnly.length ? 'var(--yl)' : 'var(--fba)'}">${inAmazonOnly.length}</div><div class="ssc-l">On Amazon, not in Sheets</div></div>
-    <div class="ssc"><div class="ssc-v" style="color:${variantMismatch.length ? 'var(--mfn)' : 'var(--fba)'}">${variantMismatch.length}</div><div class="ssc-l">Variant Mismatches</div></div>
-  </div>`;
-
-  if (inSheetsOnly.length) {
-    h += `<div class="rcard" style="border-color:var(--dnbd)"><h3 class="oos-h">In Sheets but NOT on Amazon — ${inSheetsOnly.length}</h3><p style="font-size:10px;color:var(--td);margin-bottom:8px">These ASINs may have been deactivated, deleted, or suppressed on Amazon.</p><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Status</th><th>Category</th></tr></thead><tbody>`;
-    inSheetsOnly.slice(0, 50).forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="badge ${bCls(d.status)}">${d.status}</span></td><td><span class="cat">${esc(d.sheet)}</span></td></tr>`; });
-    if (inSheetsOnly.length > 50) h += `<tr><td colspan="5" style="color:var(--m);text-align:center">…and ${inSheetsOnly.length - 50} more</td></tr>`;
-    h += `</tbody></table><button class="rbtn" onclick="exportHealth('sheets_only')">Export list as CSV</button></div>`;
-  }
-  if (inAmazonOnly.length) {
-    h += `<div class="rcard" style="border-color:var(--ylbd)"><h3 style="color:var(--yl)">On Amazon but NOT in Sheets — ${inAmazonOnly.length}</h3><p style="font-size:10px;color:var(--td);margin-bottom:8px">These ASINs exist on Amazon but are not tracked in your Sheets.</p><table class="rtable"><thead><tr><th>ASIN</th><th>SKU</th><th class="num">Stock</th><th class="num">Inbound</th></tr></thead><tbody>`;
-    inAmazonOnly.slice(0, 50).forEach(d => { h += `<tr><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td style="font-family:IBM Plex Mono;font-size:9px;color:var(--m)">${esc(d.sku || '—')}</td><td class="num">${d.qty || 0}</td><td class="num">${d.inbound || 0}</td></tr>`; });
-    if (inAmazonOnly.length > 50) h += `<tr><td colspan="4" style="color:var(--m);text-align:center">…and ${inAmazonOnly.length - 50} more</td></tr>`;
-    h += `</tbody></table><button class="rbtn" onclick="exportHealth('amazon_only')">Export list as CSV</button></div>`;
-  }
-  if (variantMismatch.length) {
-    h += `<div class="rcard" style="border-color:var(--mfnbd)"><h3 style="color:var(--mfn)">Variant Count Mismatch — ${variantMismatch.length}</h3><table class="rtable"><thead><tr><th>Product</th><th class="num">In Sheets</th><th class="num">On Amazon</th><th class="num">Diff</th></tr></thead><tbody>`;
-    variantMismatch.slice(0, 40).forEach(d => { h += `<tr><td>${esc(d.product)}</td><td class="num">${d.sheets}</td><td class="num">${d.amazon}</td><td class="num" style="color:${d.diff > 0 ? 'var(--dn)' : 'var(--fba)'};font-weight:700">${d.diff > 0 ? '+' : ''}${d.diff}</td></tr>`; });
-    h += `</tbody></table></div>`;
-  }
+  h += `<div class="ss"><div class="ssc"><div class="ssc-v" style="color:${inSheetsOnly.length ? 'var(--dn)' : 'var(--fba)'}">${inSheetsOnly.length}</div><div class="ssc-l">In Sheets, not on Amazon</div></div><div class="ssc"><div class="ssc-v" style="color:${inAmazonOnly.length ? 'var(--yl)' : 'var(--fba)'}">${inAmazonOnly.length}</div><div class="ssc-l">On Amazon, not in Sheets</div></div><div class="ssc"><div class="ssc-v" style="color:${variantMismatch.length ? 'var(--mfn)' : 'var(--fba)'}">${variantMismatch.length}</div><div class="ssc-l">Variant Mismatches</div></div></div>`;
+  if (inSheetsOnly.length) { h += `<div class="rcard" style="border-color:var(--dnbd)"><h3 class="oos-h">In Sheets but NOT on Amazon — ${inSheetsOnly.length}</h3><p style="font-size:10px;color:var(--td);margin-bottom:8px">These ASINs may have been deactivated, deleted, or suppressed on Amazon.</p><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Status</th><th>Category</th></tr></thead><tbody>`; inSheetsOnly.slice(0, 50).forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="badge ${bCls(d.status)}">${d.status}</span></td><td><span class="cat">${esc(d.sheet)}</span></td></tr>`; }); if (inSheetsOnly.length > 50) h += `<tr><td colspan="5" style="color:var(--m);text-align:center">…and ${inSheetsOnly.length - 50} more</td></tr>`; h += `</tbody></table><button class="rbtn" onclick="exportHealth('sheets_only')">Export list as CSV</button></div>`; }
+  if (inAmazonOnly.length) { h += `<div class="rcard" style="border-color:var(--ylbd)"><h3 style="color:var(--yl)">On Amazon but NOT in Sheets — ${inAmazonOnly.length}</h3><p style="font-size:10px;color:var(--td);margin-bottom:8px">These ASINs exist on Amazon but are not tracked in your Sheets.</p><table class="rtable"><thead><tr><th>ASIN</th><th>SKU</th><th class="num">Stock</th><th class="num">Inbound</th></tr></thead><tbody>`; inAmazonOnly.slice(0, 50).forEach(d => { h += `<tr><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td style="font-family:IBM Plex Mono;font-size:9px;color:var(--m)">${esc(d.sku || '—')}</td><td class="num">${d.qty || 0}</td><td class="num">${d.inbound || 0}</td></tr>`; }); if (inAmazonOnly.length > 50) h += `<tr><td colspan="4" style="color:var(--m);text-align:center">…and ${inAmazonOnly.length - 50} more</td></tr>`; h += `</tbody></table><button class="rbtn" onclick="exportHealth('amazon_only')">Export list as CSV</button></div>`; }
+  if (variantMismatch.length) { h += `<div class="rcard" style="border-color:var(--mfnbd)"><h3 style="color:var(--mfn)">Variant Count Mismatch — ${variantMismatch.length}</h3><table class="rtable"><thead><tr><th>Product</th><th class="num">In Sheets</th><th class="num">On Amazon</th><th class="num">Diff</th></tr></thead><tbody>`; variantMismatch.slice(0, 40).forEach(d => { h += `<tr><td>${esc(d.product)}</td><td class="num">${d.sheets}</td><td class="num">${d.amazon}</td><td class="num" style="color:${d.diff > 0 ? 'var(--dn)' : 'var(--fba)'};font-weight:700">${d.diff > 0 ? '+' : ''}${d.diff}</td></tr>`; }); h += `</tbody></table></div>`; }
   if (!issues) h += `<div style="text-align:center;padding:40px;color:var(--fba);font-size:16px;font-weight:700">✓ All Clear — Sheets and Amazon are in sync!</div>`;
   cont.innerHTML = h;
 }
-function exportHealth(type){
-  const am=window._amazonMap||{};
-  const listingAsins=new Set(D.map(d=>d.asin));
-  let csv,items,fname;
-  if(type==='sheets_only'){
-    items=D.filter(d=>!new Set(Object.keys(am)).has(d.asin));
-    csv='Product,Type,ASIN,Status,Category\n'+items.map(d=>`"${(d.product||'').replace(/"/g,'""')}","${d.type}","${d.asin}","${d.status}","${d.sheet}"`).join('\n');
-    fname='health_sheets_only';
-  } else {
-    items=Object.entries(am).filter(([a])=>!listingAsins.has(a)).map(([a,i])=>({asin:a,...(typeof i==='object'?i:{qty:0})}));
-    csv='ASIN,SKU,Stock,Inbound\n'+items.map(d=>`"${d.asin}","${d.sku||''}",${d.qty||0},${d.inbound||0}`).join('\n');
-    fname='health_amazon_only';
-  }
-  const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`${fname}_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast(`Exported ${items.length} items`);
-}
+function exportHealth(type){ const am=window._amazonMap||{}; const listingAsins=new Set(D.map(d=>d.asin)); let csv,items,fname; if(type==='sheets_only'){ items=D.filter(d=>!new Set(Object.keys(am)).has(d.asin)); csv='Product,Type,ASIN,Status,Category\n'+items.map(d=>`"${(d.product||'').replace(/"/g,'""')}","${d.type}","${d.asin}","${d.status}","${d.sheet}"`).join('\n'); fname='health_sheets_only'; } else { items=Object.entries(am).filter(([a])=>!listingAsins.has(a)).map(([a,i])=>({asin:a,...(typeof i==='object'?i:{qty:0})})); csv='ASIN,SKU,Stock,Inbound\n'+items.map(d=>`"${d.asin}","${d.sku||''}",${d.qty||0},${d.inbound||0}`).join('\n'); fname='health_amazon_only'; } const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`${fname}_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast(`Exported ${items.length} items`); }
 
-// ── Analytics ──
 let aR = false;
 function renderAnalytics() {
   if (aR) return; aR = true;
@@ -1092,28 +836,18 @@ function renderAnalytics() {
   const wq = D.filter(d => d.qty != null);
   const inS = wq.filter(d => d.qty > 0).length, oos = wq.filter(d => d.qty === 0).length, lo = wq.filter(d => d.qty > 0 && d.qty < 10).length, units = wq.reduce((s, d) => s + (d.qty || 0), 0);
   const total = D.length || 1;
-  let h = `<h2>Analytics</h2><div class="ss">
-    <div class="ssc"><div class="ssc-v" style="color:var(--fba)">${units.toLocaleString()}</div><div class="ssc-l">Total Units</div></div>
-    <div class="ssc"><div class="ssc-v" style="color:var(--ac)">${inS.toLocaleString()}</div><div class="ssc-l">In Stock</div></div>
-    <div class="ssc"><div class="ssc-v" style="color:var(--dn)">${oos}</div><div class="ssc-l">Out of Stock</div></div>
-    <div class="ssc"><div class="ssc-v" style="color:var(--mfn)">${lo}</div><div class="ssc-l">Low Stock</div></div>
-  </div><div class="cg">`;
+  let h = `<h2>Analytics</h2><div class="ss"><div class="ssc"><div class="ssc-v" style="color:var(--fba)">${units.toLocaleString()}</div><div class="ssc-l">Total Units</div></div><div class="ssc"><div class="ssc-v" style="color:var(--ac)">${inS.toLocaleString()}</div><div class="ssc-l">In Stock</div></div><div class="ssc"><div class="ssc-v" style="color:var(--dn)">${oos}</div><div class="ssc-l">Out of Stock</div></div><div class="ssc"><div class="ssc-v" style="color:var(--mfn)">${lo}</div><div class="ssc-l">Low Stock</div></div></div><div class="cg">`;
   const catCounts = {}; D.forEach(d => catCounts[d.sheet] = (catCounts[d.sheet] || 0) + 1); const cs = Object.entries(catCounts).sort((a, b) => b[1] - a[1]); const cm = cs[0]?.[1] || 1;
   h += `<div class="cc"><h3>By Category</h3><div class="bc">${cs.map(([n, v], i) => `<div class="br"><div class="bl">${n}</div><div class="bt"><div class="bf" style="width:${(v / cm * 100).toFixed(1)}%;background:${CL[i % 7]}"><span>${v}</span></div></div></div>`).join('')}</div></div>`;
   const typeCounts = {}; D.forEach(d => typeCounts[d.type] = (typeCounts[d.type] || 0) + 1); const ts = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]); const tm = ts[0]?.[1] || 1;
   h += `<div class="cc"><h3>By Type</h3><div class="bc">${ts.map(([n, v], i) => `<div class="br"><div class="bl">${n}</div><div class="bt"><div class="bf" style="width:${(v / tm * 100).toFixed(1)}%;background:${CL[i % 7]}"><span>${v}</span></div></div></div>`).join('')}</div></div>`;
   const fba = D.filter(d => d.status === 'FBA').length, mfn = D.filter(d => d.status === 'FBA/MFN').length, sd = D.filter(d => d.status === 'SO/DEL').length;
-  h += `<div class="cc"><h3>By Status</h3><div class="bc">
-    <div class="br"><div class="bl">FBA</div><div class="bt"><div class="bf" style="width:${(fba / total * 100).toFixed(1)}%;background:var(--fba)"><span>${fba}</span></div></div></div>
-    <div class="br"><div class="bl">FBA/MFN</div><div class="bt"><div class="bf" style="width:${(mfn / total * 100).toFixed(1)}%;background:var(--mfn)"><span>${mfn}</span></div></div></div>
-    <div class="br"><div class="bl">SO/DEL</div><div class="bt"><div class="bf" style="width:${(sd / total * 100).toFixed(1)}%;background:var(--dn)"><span>${sd}</span></div></div></div>
-  </div></div>`;
+  h += `<div class="cc"><h3>By Status</h3><div class="bc"><div class="br"><div class="bl">FBA</div><div class="bt"><div class="bf" style="width:${(fba/total*100).toFixed(1)}%;background:var(--fba)"><span>${fba}</span></div></div></div><div class="br"><div class="bl">FBA/MFN</div><div class="bt"><div class="bf" style="width:${(mfn/total*100).toFixed(1)}%;background:var(--mfn)"><span>${mfn}</span></div></div></div><div class="br"><div class="bl">SO/DEL</div><div class="bt"><div class="bf" style="width:${(sd/total*100).toFixed(1)}%;background:var(--dn)"><span>${sd}</span></div></div></div></div></div>`;
   const pc = {}; D.forEach(d => pc[d.product] = (pc[d.product] || 0) + 1); const tp = Object.entries(pc).sort((a, b) => b[1] - a[1]).slice(0, 12);
   h += `<div class="cc"><h3>Top Products (by variants)</h3><table class="rtable"><thead><tr><th>Product</th><th class="num">Variants</th></tr></thead><tbody>${tp.map(([n, v]) => `<tr><td>${esc(n)}</td><td class="num">${v}</td></tr>`).join('')}</tbody></table></div>`;
   h += `</div>`; c.innerHTML = h;
 }
 
-// ── Clear all data ──
 async function clearAllData() {
   if (!confirm('Удалить ВСЕ данные из базы? Это действие нельзя отменить.')) return;
   if (!firebaseReady) { toast('Firebase не подключён'); return; }
@@ -1130,7 +864,6 @@ async function clearAllData() {
   } catch(err) { toast('Ошибка: ' + err.message); }
 }
 
-// ── Utils ──
 function toast(m) { const t = document.getElementById('toast'); document.getElementById('tm').textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2400); }
 function setU(t, m, w) { const el = document.getElementById('us-' + t); el.textContent = m; el.className = 'ust' + (w ? ' w' : ''); }
 function openH() { document.getElementById('hm').classList.add('open'); }
