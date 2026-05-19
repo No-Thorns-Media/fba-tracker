@@ -949,7 +949,7 @@ async function clearAllData() {
   } catch(err) { toast('Ошибка: ' + err.message); }
 }
 
-function toast(m) { const t = document.getElementById('toast'); document.getElementById('tm').textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2400); }
+function toast(m, dur) { const t = document.getElementById('toast'); document.getElementById('tm').textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), dur || 2400); }
 function setU(t, m, w) { const el = document.getElementById('us-' + t); el.textContent = m; el.className = 'ust' + (w ? ' w' : ''); }
 function openH() { document.getElementById('hm').classList.add('open'); }
 function closeH() { document.getElementById('hm').classList.remove('open'); }
@@ -1093,9 +1093,18 @@ function confirmSalesUpload() {
 
     function fc() {
       var names = Array.prototype.slice.call(arguments);
+      // First pass: exact match (case-insensitive)
       for (var n = 0; n < names.length; n++) {
-        var found = header.find(function(h) { return h.toLowerCase().indexOf(names[n].toLowerCase()) >= 0; });
-        if (found) return found;
+        var exact = header.find(function(h) { return h.toLowerCase().trim() === names[n].toLowerCase(); });
+        if (exact) return exact;
+      }
+      // Second pass: partial match, but prefer shorter column names (avoid "- B2B" variants)
+      for (var n = 0; n < names.length; n++) {
+        var matches = header.filter(function(h) { return h.toLowerCase().indexOf(names[n].toLowerCase()) >= 0; });
+        if (matches.length > 0) {
+          matches.sort(function(a, b) { return a.length - b.length; });
+          return matches[0];
+        }
       }
       return null;
     }
@@ -1104,8 +1113,14 @@ function confirmSalesUpload() {
     var asinCol     = fc('child asin', 'asin', 'parent asin');
     var unitsCol    = fc('units ordered', 'units sold');
     var revenueCol  = fc('ordered product sales', 'revenue', 'product sales');
-    var sessionsCol = fc('sessions', 'page views');
+    var sessionsCol = fc('sessions – total', 'sessions - total', 'sessions', 'page views');
     var cvCol       = fc('unit session percentage', 'conversion');
+
+    console.log('[Sales CSV columns]', {
+      title: titleCol, asin: asinCol, units: unitsCol,
+      revenue: revenueCol, sessions: sessionsCol, cv: cvCol,
+      allHeaders: header
+    });
 
     var items = rows.map(function(r) {
       var title    = titleCol    ? r[titleCol]    : '';
@@ -1131,7 +1146,8 @@ function confirmSalesUpload() {
     updateSalesTabBadge();
     closeSalesModal();
     sR = false;
-    toast('Сохранено: ' + label);
+    var colInfo = 'Units: ' + (unitsCol || '?') + ' | Revenue: ' + (revenueCol || '?');
+    toast('Сохранено: ' + label + '\n' + colInfo, 5000);
     if (document.getElementById('p-sales').classList.contains('on')) renderSalesTab();
   };
   reader.readAsText(file);
