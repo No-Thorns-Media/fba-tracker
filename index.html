@@ -933,19 +933,22 @@ function renderAnalytics() {
 }
 
 async function clearAllData() {
-  if (!confirm('Удалить ВСЕ данные из базы? Это действие нельзя отменить.')) return;
+  if (!confirm('Удалить данные инвентаря из базы? (Sales отчёты сохранятся)\nЭто действие нельзя отменить.')) return;
   if (!firebaseReady) { toast('Firebase не подключён'); return; }
   try {
-    await dbRef.remove(dbRef.ref(dbRef.db, 'inventory'));
-    D = []; reportHistory = []; changeLog = []; salesReports = [];
+    // Only remove inventory-specific data, NOT salesReports
+    await dbRef.remove(dbRef.ref(dbRef.db, 'inventory/data'));
+    await dbRef.remove(dbRef.ref(dbRef.db, 'inventory/meta'));
+    await dbRef.remove(dbRef.ref(dbRef.db, 'inventory/reportHistory'));
+    await dbRef.remove(dbRef.ref(dbRef.db, 'inventory/amazonMap'));
+    D = []; reportHistory = []; changeLog = [];
     window._amazonMap = null; window._amazonReportDate = null;
-    rR = false; cR = false; hR = false; aR = false; sR = false;
-    updateSalesTabBadge();
+    rR = false; cR = false; hR = false; aR = false;
     popF(); upS(); apply(); upTabs(); updateTimeline();
     document.getElementById('us-stock').textContent = '';
     document.getElementById('us-list').textContent = '';
     document.getElementById('hsub-text').textContent = 'База очищена — загрузите свежие отчёты';
-    toast('База данных очищена');
+    toast('Инвентарь очищен (Sales отчёты сохранены)');
   } catch(err) { toast('Ошибка: ' + err.message); }
 }
 
