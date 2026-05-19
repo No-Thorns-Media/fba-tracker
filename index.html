@@ -219,7 +219,7 @@ tbody td{padding:7px 9px;vertical-align:middle}
 
 @media(max-width:768px){header,.ctrl,.tw,.pw,.analytics,.af,.kbar,.ubar,.restock,.conflicts,.report-timeline{padding-left:14px;padding-right:14px}.tabs{padding:0 14px}.cg{grid-template-columns:1fr}}
 
-/* SALES ANALYTICS */
+/* SALES */
 .sales{padding:24px 40px}
 .sales h2{font-size:18px;font-weight:700;margin:0 0 4px}
 .period-sel{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:14px 0}
@@ -349,21 +349,14 @@ tbody td{padding:7px 9px;vertical-align:middle}
 
 <div class="mo" id="sales-modal">
   <div class="modal" style="max-width:460px">
-    <h2>📊 Загрузка отчёта</h2>
+    <h2>&#128202; Upload Business Report</h2>
     <p style="color:var(--m);font-size:10.5px;margin-bottom:16px">Upload Amazon Business Report CSV and set the date range.</p>
-    <div class="sm-field">
-      <label>Label (e.g. "May 2026")</label>
-      <input type="text" id="sm-label" placeholder="May 2026">
-    </div>
+    <div class="sm-field"><label>Label</label><input type="text" id="sm-label" placeholder="May 2026"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="sm-field"><label>Date From</label><input type="date" id="sm-from" onchange="autoSalesLabel()"></div>
       <div class="sm-field"><label>Date To</label><input type="date" id="sm-to" onchange="autoSalesLabel()"></div>
     </div>
-    <div id="sm-preview" style="font-size:10px;font-family:'IBM Plex Mono';color:var(--fba);margin-top:4px"></div>
-    <div class="sm-field" style="margin-top:10px">
-      <label>Business Report CSV</label>
-      <input type="file" id="sm-file" accept=".csv" style="padding:6px;font-family:inherit">
-    </div>
+    <div class="sm-field" style="margin-top:8px"><label>Business Report CSV</label><input type="file" id="sm-file" accept=".csv" style="padding:6px;font-family:inherit"></div>
     <div class="sm-actions">
       <button class="sm-btn primary" onclick="confirmSalesUpload()">Save Report</button>
       <button class="sm-btn" onclick="closeSalesModal()">Cancel</button>
@@ -868,11 +861,6 @@ function renderConflicts() {
 function exportChanges(){ if(!changeLog.length||!changeLog[0].changes.length)return; const ch=changeLog[0].changes; let csv='Type,Product,ItemType,ASIN,Field,From,To,Delta\n'; ch.forEach(c=>{ if(c.type==='new_asin') csv+=`"New","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","—","—","${c.qty!=null?c.qty:''}",""\n`; else if(c.type==='removed_asin') csv+=`"Removed","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","—","${c.prevQty!=null?c.prevQty:''}","—",""\n`; else if(c.type==='changed') c.diffs.forEach(d=>{ csv+=`"Changed","${(c.product||'').replace(/"/g,'""')}","${c.itemType||''}","${c.asin}","${d.field}","${d.from!=null?d.from:''}","${d.to!=null?d.to:''}","${d.delta!=null?d.delta:''}"\n`; }); }); const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`changes_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast(`Exported ${ch.length} changes`); }
 
 let hR = false;
-function toggleHealthSection(key) {
-  healthExpanded[key] = !healthExpanded[key];
-  hR = false; renderHealth();
-}
-
 function renderHealth() {
   if (hR) return; hR = true;
   const cont = document.getElementById('health-content');
@@ -898,42 +886,26 @@ function renderHealth() {
   if (inSheetsOnly.length) {
     const show1 = healthExpanded.sheets_only;
     const list1 = show1 ? inSheetsOnly : inSheetsOnly.slice(0,15);
-    h += '<div class="rcard" style="border-color:var(--dnbd)">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
-      +'<h3 class="oos-h" style="margin:0">In Sheets but NOT on Amazon — '+inSheetsOnly.length+'</h3>'
-      +'<div style="display:flex;gap:8px"><button class="rbtn" onclick="toggleHealthSection('sheets_only')">'+(show1?'▲ Свернуть':'▼ Показать все ('+inSheetsOnly.length+')')+'</button>'
-      +'<button class="rbtn" onclick="exportHealth('sheets_only')">↓ CSV</button></div></div>'
-      +'<p style="font-size:10px;color:var(--td);margin-bottom:8px">These ASINs may have been deactivated, deleted, or suppressed on Amazon.</p>'
-      +'<table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Status</th><th>Category</th></tr></thead><tbody>';
-    list1.forEach(d => { h += '<tr><td>'+esc(d.product)+'</td><td>'+esc(d.type)+'</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/'+d.asin+'" target="_blank" style="color:var(--ac);text-decoration:none">'+d.asin+'</a></td><td><span class="badge '+bCls(d.status)+'">'+d.status+'</span></td><td><span class="cat">'+esc(d.sheet)+'</span></td></tr>'; });
-    if (!show1 && inSheetsOnly.length > 15) h += '<tr><td colspan="5" style="color:var(--m);text-align:center;padding:8px;cursor:pointer" onclick="toggleHealthSection('sheets_only')">… ещё '+(inSheetsOnly.length-15)+' — нажмите «Показать все»</td></tr>';
-    h += '</tbody></table></div>';
+    h += `<div class="rcard" style="border-color:var(--dnbd)"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><h3 class="oos-h" style="margin:0">In Sheets but NOT on Amazon — ${inSheetsOnly.length}</h3><div style="display:flex;gap:8px"><button class="rbtn" onclick="toggleHealthSection('sheets_only')">${show1?'▲ Свернуть':'▼ Показать все ('+inSheetsOnly.length+')'}</button><button class="rbtn" onclick="exportHealth('sheets_only')">↓ CSV</button></div></div><p style="font-size:10px;color:var(--td);margin-bottom:8px">These ASINs may have been deactivated, deleted, or suppressed on Amazon.</p><table class="rtable"><thead><tr><th>Product</th><th>Type</th><th>ASIN</th><th>Status</th><th>Category</th></tr></thead><tbody>`;
+    list1.forEach(d => { h += `<tr><td>${esc(d.product)}</td><td>${esc(d.type)}</td><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td><span class="badge ${bCls(d.status)}">${d.status}</span></td><td><span class="cat">${esc(d.sheet)}</span></td></tr>`; });
+    if (!show1 && inSheetsOnly.length>15) h += `<tr><td colspan="5" style="color:var(--m);text-align:center;padding:8px;cursor:pointer" onclick="toggleHealthSection('sheets_only')">… ещё ${inSheetsOnly.length-15}</td></tr>`;
+    h += `</tbody></table></div>`;
   }
   if (inAmazonOnly.length) {
     const show2 = healthExpanded.amazon_only;
     const list2 = show2 ? inAmazonOnly : inAmazonOnly.slice(0,15);
-    h += '<div class="rcard" style="border-color:var(--ylbd)">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
-      +'<h3 style="color:var(--yl);margin:0">On Amazon but NOT in Sheets — '+inAmazonOnly.length+'</h3>'
-      +'<div style="display:flex;gap:8px"><button class="rbtn" onclick="toggleHealthSection('amazon_only')">'+(show2?'▲ Свернуть':'▼ Показать все ('+inAmazonOnly.length+')')+'</button>'
-      +'<button class="rbtn" onclick="exportHealth('amazon_only')">↓ CSV</button></div></div>'
-      +'<p style="font-size:10px;color:var(--td);margin-bottom:8px">These ASINs exist on Amazon but are not tracked in your Sheets.</p>'
-      +'<table class="rtable"><thead><tr><th>ASIN</th><th>SKU</th><th class="num">Stock</th><th class="num">Inbound</th></tr></thead><tbody>';
-    list2.forEach(d => { h += '<tr><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/'+d.asin+'" target="_blank" style="color:var(--ac);text-decoration:none">'+d.asin+'</a></td><td style="font-family:IBM Plex Mono;font-size:9px;color:var(--m)">'+esc(d.sku||'—')+'</td><td class="num">'+(d.qty||0)+'</td><td class="num">'+(d.inbound||0)+'</td></tr>'; });
-    if (!show2 && inAmazonOnly.length > 15) h += '<tr><td colspan="4" style="color:var(--m);text-align:center;padding:8px;cursor:pointer" onclick="toggleHealthSection('amazon_only')">… ещё '+(inAmazonOnly.length-15)+' — нажмите «Показать все»</td></tr>';
-    h += '</tbody></table></div>';
+    h += `<div class="rcard" style="border-color:var(--ylbd)"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><h3 style="color:var(--yl);margin:0">On Amazon but NOT in Sheets — ${inAmazonOnly.length}</h3><div style="display:flex;gap:8px"><button class="rbtn" onclick="toggleHealthSection('amazon_only')">${show2?'▲ Свернуть':'▼ Показать все ('+inAmazonOnly.length+')'}</button><button class="rbtn" onclick="exportHealth('amazon_only')">↓ CSV</button></div></div><p style="font-size:10px;color:var(--td);margin-bottom:8px">These ASINs exist on Amazon but are not tracked in your Sheets.</p><table class="rtable"><thead><tr><th>ASIN</th><th>SKU</th><th class="num">Stock</th><th class="num">Inbound</th></tr></thead><tbody>`;
+    list2.forEach(d => { h += `<tr><td style="font-family:IBM Plex Mono;font-size:10px"><a href="https://www.amazon.com/dp/${d.asin}" target="_blank" style="color:var(--ac);text-decoration:none">${d.asin}</a></td><td style="font-family:IBM Plex Mono;font-size:9px;color:var(--m)">${esc(d.sku||'—')}</td><td class="num">${d.qty||0}</td><td class="num">${d.inbound||0}</td></tr>`; });
+    if (!show2 && inAmazonOnly.length>15) h += `<tr><td colspan="4" style="color:var(--m);text-align:center;padding:8px;cursor:pointer" onclick="toggleHealthSection('amazon_only')">… ещё ${inAmazonOnly.length-15}</td></tr>`;
+    h += `</tbody></table></div>`;
   }
   if (variantMismatch.length) {
     const show3 = healthExpanded.variant_mismatch;
     const list3 = show3 ? variantMismatch : variantMismatch.slice(0,15);
-    h += '<div class="rcard" style="border-color:var(--mfnbd)">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
-      +'<h3 style="color:var(--mfn);margin:0">Variant Count Mismatch — '+variantMismatch.length+'</h3>'
-      +'<button class="rbtn" onclick="toggleHealthSection('variant_mismatch')">'+(show3?'▲ Свернуть':'▼ Показать все ('+variantMismatch.length+')')+'</button></div>'
-      +'<table class="rtable"><thead><tr><th>Product</th><th class="num">In Sheets</th><th class="num">On Amazon</th><th class="num">Diff</th></tr></thead><tbody>';
-    list3.forEach(d => { h += '<tr><td>'+esc(d.product)+'</td><td class="num">'+d.sheets+'</td><td class="num">'+d.amazon+'</td><td class="num" style="color:'+(d.diff>0?'var(--dn)':'var(--fba)')+';font-weight:700">'+(d.diff>0?'+':'')+d.diff+'</td></tr>'; });
-    if (!show3 && variantMismatch.length > 15) h += '<tr><td colspan="4" style="color:var(--m);text-align:center;padding:8px;cursor:pointer" onclick="toggleHealthSection('variant_mismatch')">… ещё '+(variantMismatch.length-15)+' — нажмите «Показать все»</td></tr>';
-    h += '</tbody></table></div>';
+    h += `<div class="rcard" style="border-color:var(--mfnbd)"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><h3 style="color:var(--mfn);margin:0">Variant Count Mismatch — ${variantMismatch.length}</h3><button class="rbtn" onclick="toggleHealthSection('variant_mismatch')">${show3?'▲ Свернуть':'▼ Показать все ('+variantMismatch.length+')'}</button></div><table class="rtable"><thead><tr><th>Product</th><th class="num">In Sheets</th><th class="num">On Amazon</th><th class="num">Diff</th></tr></thead><tbody>`;
+    list3.forEach(d => { h += `<tr><td>${esc(d.product)}</td><td class="num">${d.sheets}</td><td class="num">${d.amazon}</td><td class="num" style="color:${d.diff>0?'var(--dn)':'var(--fba)'};font-weight:700">${d.diff>0?'+':''}${d.diff}</td></tr>`; });
+    if (!show3 && variantMismatch.length>15) h += `<tr><td colspan="4" style="color:var(--m);text-align:center;padding:8px;cursor:pointer" onclick="toggleHealthSection('variant_mismatch')">… ещё ${variantMismatch.length-15}</td></tr>`;
+    h += `</tbody></table></div>`;
   }
   if (!issues) h += `<div style="text-align:center;padding:40px;color:var(--fba);font-size:16px;font-weight:700">✓ All Clear — Sheets and Amazon are in sync!</div>`;
   cont.innerHTML = h;
@@ -996,8 +968,10 @@ document.getElementById('f-type').addEventListener('change', () => apply());
 document.getElementById('f-status').addEventListener('change', () => apply());
 init();
 
-
+// ═══ SALES ANALYTICS ═══
+// ═══════════════════════════════════════════════════════════
 // SALES ANALYTICS
+// ═══════════════════════════════════════════════════════════
 let salesReports = [];
 let salesPeriod = '1m';
 let salesSortTable = 'revenue';
@@ -1060,91 +1034,99 @@ function autoSalesLabel() {
     } else {
       label = MN[f.getMonth()] + ' ' + f.getFullYear() + '–' + MN[t.getMonth()] + ' ' + t.getFullYear();
     }
-  } else if (f) { label = MN[f.getMonth()] + ' ' + f.getFullYear(); }
-  else if (t)   { label = MN[t.getMonth()] + ' ' + t.getFullYear(); }
+  } else if (f) {
+    label = MN[f.getMonth()] + ' ' + f.getFullYear();
+  } else if (t) {
+    label = MN[t.getMonth()] + ' ' + t.getFullYear();
+  }
   const el = document.getElementById('sm-label');
   if (el) el.value = label;
 }
 
 function detectCategory(title, asin) {
-  if (asin && D && D.length) {
-    const inv = D.find(d => d.asin === asin);
+  if (asin && typeof D !== 'undefined' && D && D.length) {
+    const inv = D.find(function(d) { return d.asin === asin; });
     if (inv && inv.type) return inv.type;
   }
   const t = (title || '').toLowerCase();
-  if (t.includes('sticker') || t.includes('decal')) return 'Sticker (Single)';
-  if (t.includes('magnet')) return 'Magnet (2-Pack)';
-  if (t.includes('patch')) return 'Patch (Single)';
-  if (t.includes('mug')) return 'Mug';
+  if (t.indexOf('sticker') >= 0 || t.indexOf('decal') >= 0) return 'Sticker (Single)';
+  if (t.indexOf('magnet') >= 0) return 'Magnet (2-Pack)';
+  if (t.indexOf('patch') >= 0) return 'Patch (Single)';
+  if (t.indexOf('mug') >= 0) return 'Mug';
   return 'Other';
 }
 
 function parseSalesCSV(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const lines = text.split(/\r?\n/).filter(function(l) { return l.trim(); });
   if (lines.length < 2) return null;
-  let header = lines[0].split('\t').map(h => h.trim().replace(/^"|"$/g,''));
-  let rows = [];
-  if (header.length < 3) {
-    header = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g,''));
-      const row = {};
-      header.forEach((h, idx) => row[h] = cols[idx] || '');
-      rows.push(row);
-    }
-  } else {
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split('\t').map(c => c.trim().replace(/^"|"$/g,''));
-      const row = {};
-      header.forEach((h, idx) => row[h] = cols[idx] || '');
-      rows.push(row);
-    }
+  var sep = '\t';
+  var headerLine = lines[0];
+  var cols0 = headerLine.split('\t');
+  if (cols0.length < 3) { sep = ','; }
+  var header = headerLine.split(sep).map(function(h) { return h.trim().replace(/^"|"$/g, ''); });
+  var rows = [];
+  for (var i = 1; i < lines.length; i++) {
+    var cols = lines[i].split(sep).map(function(c) { return c.trim().replace(/^"|"$/g, ''); });
+    var row = {};
+    header.forEach(function(h, idx) { row[h] = cols[idx] || ''; });
+    rows.push(row);
   }
-  return { header, rows };
+  return { header: header, rows: rows };
 }
 
 function confirmSalesUpload() {
-  const label    = document.getElementById('sm-label').value.trim();
-  const dateFrom = document.getElementById('sm-from').value;
-  const dateTo   = document.getElementById('sm-to').value;
-  const file     = document.getElementById('sm-file').files[0];
+  var label    = document.getElementById('sm-label').value.trim();
+  var dateFrom = document.getElementById('sm-from').value;
+  var dateTo   = document.getElementById('sm-to').value;
+  var file     = document.getElementById('sm-file').files[0];
   if (!label)    { toast('Введите название'); return; }
   if (!dateFrom) { toast('Укажите дату начала'); return; }
   if (!dateTo)   { toast('Укажите дату конца'); return; }
   if (!file)     { toast('Выберите CSV файл'); return; }
 
-  const reader = new FileReader();
-  reader.onload = async e => {
-    const parsed = parseSalesCSV(e.target.result);
+  var reader = new FileReader();
+  reader.onload = async function(e) {
+    var parsed = parseSalesCSV(e.target.result);
     if (!parsed) { toast('Не удалось прочитать CSV'); return; }
-    const { header, rows } = parsed;
-    const fc = (...names) => { for (const n of names) { const h = header.find(h => h.toLowerCase().includes(n.toLowerCase())); if (h) return h; } return null; };
-    const titleCol    = fc('title','product name');
-    const asinCol     = fc('child asin','asin','parent asin');
-    const unitsCol    = fc('units ordered','units sold');
-    const revenueCol  = fc('ordered product sales','revenue','product sales');
-    const sessionsCol = fc('sessions','page views');
-    const cvCol       = fc('unit session percentage','conversion');
+    var header = parsed.header;
+    var rows   = parsed.rows;
 
-    const items = rows.map(r => {
-      const title    = titleCol    ? r[titleCol]    : '';
-      const asin     = asinCol     ? r[asinCol]     : '';
-      const units    = parseFloat((unitsCol    ? r[unitsCol]    : '0').replace(/[$,]/g,'')) || 0;
-      const revenue  = parseFloat((revenueCol  ? r[revenueCol]  : '0').replace(/[$,]/g,'')) || 0;
-      const sessions = parseFloat((sessionsCol ? r[sessionsCol] : '0').replace(/[$,]/g,'')) || 0;
-      const cv       = parseFloat((cvCol       ? r[cvCol]       : '0').replace(/[%,]/g,'')) || 0;
-      return { title, asin, units, revenue, sessions, cv, category: detectCategory(title, asin) };
-    }).filter(i => i.title || i.units || i.revenue);
+    function fc() {
+      var names = Array.prototype.slice.call(arguments);
+      for (var n = 0; n < names.length; n++) {
+        var found = header.find(function(h) { return h.toLowerCase().indexOf(names[n].toLowerCase()) >= 0; });
+        if (found) return found;
+      }
+      return null;
+    }
 
-    const totals = {
-      units:    items.reduce((s,i) => s + i.units, 0),
-      revenue:  items.reduce((s,i) => s + i.revenue, 0),
-      sessions: items.reduce((s,i) => s + i.sessions, 0),
+    var titleCol    = fc('title', 'product name');
+    var asinCol     = fc('child asin', 'asin', 'parent asin');
+    var unitsCol    = fc('units ordered', 'units sold');
+    var revenueCol  = fc('ordered product sales', 'revenue', 'product sales');
+    var sessionsCol = fc('sessions', 'page views');
+    var cvCol       = fc('unit session percentage', 'conversion');
+
+    var items = rows.map(function(r) {
+      var title    = titleCol    ? r[titleCol]    : '';
+      var asin     = asinCol     ? r[asinCol]     : '';
+      var units    = parseFloat((unitsCol    ? r[unitsCol]    : '0').replace(/[$,]/g, '')) || 0;
+      var revenue  = parseFloat((revenueCol  ? r[revenueCol]  : '0').replace(/[$,]/g, '')) || 0;
+      var sessions = parseFloat((sessionsCol ? r[sessionsCol] : '0').replace(/[$,]/g, '')) || 0;
+      var cv       = parseFloat((cvCol       ? r[cvCol]       : '0').replace(/[%,]/g, '')) || 0;
+      return { title: title, asin: asin, units: units, revenue: revenue, sessions: sessions, cv: cv, category: detectCategory(title, asin) };
+    }).filter(function(i) { return i.title || i.units || i.revenue; });
+
+    var totals = {
+      units:    items.reduce(function(s, i) { return s + i.units; }, 0),
+      revenue:  items.reduce(function(s, i) { return s + i.revenue; }, 0),
+      sessions: items.reduce(function(s, i) { return s + i.sessions; }, 0)
     };
-    const report = { id: Date.now(), label, dateFrom, dateTo, uploadedAt: new Date().toISOString(), items, totals };
-    salesReports = [...salesReports.filter(r => r.label !== label), report];
+    var report = { id: Date.now(), label: label, dateFrom: dateFrom, dateTo: dateTo, uploadedAt: new Date().toISOString(), items: items, totals: totals };
+    salesReports = salesReports.filter(function(r) { return r.label !== label; });
+    salesReports.push(report);
     if (salesReports.length > 36) salesReports = salesReports.slice(-36);
-    salesReports.sort((a, b) => new Date(a.dateFrom) - new Date(b.dateFrom));
+    salesReports.sort(function(a, b) { return new Date(a.dateFrom) - new Date(b.dateFrom); });
     await saveSalesReports();
     updateSalesTabBadge();
     closeSalesModal();
@@ -1157,7 +1139,7 @@ function confirmSalesUpload() {
 
 async function deleteSalesReport(id) {
   if (!confirm('Удалить этот отчёт?')) return;
-  salesReports = salesReports.filter(r => r.id !== id);
+  salesReports = salesReports.filter(function(r) { return r.id !== id; });
   await saveSalesReports();
   updateSalesTabBadge();
   sR = false;
@@ -1165,141 +1147,242 @@ async function deleteSalesReport(id) {
 }
 
 function setSalesSort(s) {
-  if (salesSortTable === s) salesSortDir = salesSortDir === 'desc' ? 'asc' : 'desc';
+  if (salesSortTable === s) { salesSortDir = salesSortDir === 'desc' ? 'asc' : 'desc'; }
   else { salesSortTable = s; salesSortDir = 'desc'; }
-  sR = false; renderSalesTab();
+  sR = false;
+  renderSalesTab();
 }
 
 function setSalesPeriod(p) {
-  salesPeriod = p; salesCustomSel = new Set(); salesPage = 1; sR = false; renderSalesTab();
+  salesPeriod = p;
+  salesCustomSel = new Set();
+  salesPage = 1;
+  sR = false;
+  renderSalesTab();
 }
 
 function toggleSalesCustom(id) {
-  if (salesCustomSel.has(id)) salesCustomSel.delete(id); else salesCustomSel.add(id);
-  sR = false; renderSalesTab();
+  if (salesCustomSel.has(id)) { salesCustomSel.delete(id); }
+  else { salesCustomSel.add(id); }
+  sR = false;
+  renderSalesTab();
 }
 
 function toggleHealthSection(key) {
   healthExpanded[key] = !healthExpanded[key];
-  hR = false; renderHealth();
+  hR = false;
+  renderHealth();
 }
 
 function renderSalesTab() {
-  const c = document.getElementById('sales-content');
+  var c = document.getElementById('sales-content');
   if (!c) return;
+
   if (!salesReports.length) {
-    c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px"><div><h2>Sales Analytics</h2><div style="color:var(--m);font-size:11px">Amazon Business Reports</div></div><button class="sm-btn primary" onclick="openSalesModal()">+ Upload Report</button></div><div class="sales-empty-upload"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><h3>Нет данных</h3><div>Загрузите Business Report из Amazon Seller Central</div><div style="font-size:10px;margin-top:8px;color:var(--bdl)">Reports → Business Reports → Detail Page Sales and Traffic</div><button class="sm-btn primary" onclick="openSalesModal()" style="margin-top:18px">📊 Загрузить первый отчёт</button></div>';
+    c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+      + '<div><h2>Sales Analytics</h2><div style="color:var(--m);font-size:11px">Amazon Business Reports</div></div>'
+      + '<button class="sm-btn primary" onclick="openSalesModal()">+ Upload Report</button></div>'
+      + '<div class="sales-empty-upload">'
+      + '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">'
+      + '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>'
+      + '<polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
+      + '<h3>Нет данных</h3>'
+      + '<div>Загрузите Business Report из Amazon Seller Central</div>'
+      + '<button class="sm-btn primary" onclick="openSalesModal()" style="margin-top:18px">Загрузить отчёт</button></div>';
     return;
   }
 
-  const latestTo = salesReports.reduce((mx, r) => { const d = new Date(r.dateTo); return d > mx ? d : mx; }, new Date(0));
-  const monthsBack = {'1m':1,'3m':3,'6m':6,'1y':12,'all':Infinity}[salesPeriod] ?? Infinity;
-  const cutoff = monthsBack === Infinity ? new Date(0) : new Date(latestTo.getFullYear(), latestTo.getMonth() - monthsBack + 1, 1);
-  const filtered = salesPeriod === 'custom' ? salesReports.filter(r => salesCustomSel.has(r.id)) : salesReports.filter(r => new Date(r.dateTo) >= cutoff);
+  var latestTo = salesReports.reduce(function(mx, r) {
+    var d = new Date(r.dateTo);
+    return d > mx ? d : mx;
+  }, new Date(0));
 
-  const aggMap = new Map();
-  filtered.forEach(rep => {
-    (rep.items || []).forEach(it => {
-      const key = it.asin || it.title;
+  var monthsMap = { '1m': 1, '3m': 3, '6m': 6, '1y': 12 };
+  var monthsBack = monthsMap[salesPeriod] !== undefined ? monthsMap[salesPeriod] : Infinity;
+  var cutoff = monthsBack === Infinity ? new Date(0) :
+    new Date(latestTo.getFullYear(), latestTo.getMonth() - monthsBack + 1, 1);
+
+  var filtered = salesPeriod === 'custom'
+    ? salesReports.filter(function(r) { return salesCustomSel.has(r.id); })
+    : salesReports.filter(function(r) { return new Date(r.dateTo) >= cutoff; });
+
+  var aggMap = {};
+  filtered.forEach(function(rep) {
+    (rep.items || []).forEach(function(it) {
+      var key = it.asin || it.title;
       if (!key) return;
-      const ex = aggMap.get(key) || { title: it.title, asin: it.asin || '', units: 0, revenue: 0, sessions: 0, category: it.category };
-      ex.units += it.units || 0; ex.revenue += it.revenue || 0; ex.sessions += it.sessions || 0;
-      aggMap.set(key, ex);
+      if (!aggMap[key]) {
+        aggMap[key] = { title: it.title, asin: it.asin || '', units: 0, revenue: 0, sessions: 0, category: it.category };
+      }
+      aggMap[key].units    += it.units    || 0;
+      aggMap[key].revenue  += it.revenue  || 0;
+      aggMap[key].sessions += it.sessions || 0;
     });
   });
 
-  let items = [...aggMap.values()];
-  const srch = salesSearch.toLowerCase();
-  if (srch) items = items.filter(i => (i.title||'').toLowerCase().includes(srch) || (i.asin||'').toLowerCase().includes(srch));
-  if (salesCatFilter) items = items.filter(i => i.category === salesCatFilter);
-  items.sort((a, b) => { const v = salesSortTable === 'units' ? a.units - b.units : a.revenue - b.revenue; return salesSortDir === 'desc' ? -v : v; });
+  var items = Object.values(aggMap);
 
-  const totRev = items.reduce((s,i) => s + i.revenue, 0);
-  const totUnits = items.reduce((s,i) => s + i.units, 0);
-  const totSess = items.reduce((s,i) => s + i.sessions, 0);
-  const avgCV = totSess > 0 ? (totUnits / totSess * 100) : 0;
-  const maxRev = items.length ? Math.max(...items.map(i => i.revenue)) || 1 : 1;
-  const maxUnits = items.reduce((m, i) => Math.max(m, i.units), 1);
+  var srch = salesSearch.toLowerCase();
+  if (srch) {
+    items = items.filter(function(i) {
+      return (i.title || '').toLowerCase().indexOf(srch) >= 0 ||
+             (i.asin  || '').toLowerCase().indexOf(srch) >= 0;
+    });
+  }
+  if (salesCatFilter) {
+    items = items.filter(function(i) { return i.category === salesCatFilter; });
+  }
+
+  items.sort(function(a, b) {
+    var v = salesSortTable === 'units' ? a.units - b.units : a.revenue - b.revenue;
+    return salesSortDir === 'desc' ? -v : v;
+  });
+
+  var totRev   = items.reduce(function(s, i) { return s + i.revenue; }, 0);
+  var totUnits = items.reduce(function(s, i) { return s + i.units; }, 0);
+  var totSess  = items.reduce(function(s, i) { return s + i.sessions; }, 0);
+  var avgCV    = totSess > 0 ? (totUnits / totSess * 100) : 0;
+  var maxRev   = 1;
+  var maxUnits = 1;
+  items.forEach(function(i) {
+    if (i.revenue > maxRev) maxRev = i.revenue;
+    if (i.units > maxUnits) maxUnits = i.units;
+  });
 
   // Calendar
-  const calHTML = (() => {
-    const covered = new Map();
-    salesReports.forEach(r => {
-      const from = new Date(r.dateFrom + 'T00:00:00'), to = new Date(r.dateTo + 'T00:00:00');
-      let d = new Date(from.getFullYear(), from.getMonth(), 1);
-      while (d <= to) { covered.set(d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0'), r.label); d = new Date(d.getFullYear(), d.getMonth()+1, 1); }
-    });
-    const MO = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
-    const years = [...new Set([...covered.keys()].map(k => k.slice(0,4)))].sort();
-    if (!years.length) return '';
-    const rowsH = years.map(y => '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap"><span style="font-size:9px;font-family:\'IBM Plex Mono\';color:var(--m);min-width:34px">'+y+'</span>'+MO.map((mn,mi)=>{const key=y+'-'+(mi+1).toString().padStart(2,'0');const has=covered.has(key);return '<span title="'+(has?covered.get(key):mn+' '+y)+'" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:22px;border-radius:4px;font-size:9px;font-family:\'IBM Plex Mono\';font-weight:600;background:'+(has?'var(--acb)':'var(--s2)')+';color:'+(has?'var(--ac)':'var(--bdl)')+';border:1px solid '+(has?'var(--acbd)':'var(--bd)')+'">'+mn+'</span>';}).join('')+'</div>').join('');
-    return '<div style="background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:10px 14px;margin-bottom:14px"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--m);margin-bottom:8px">Покрытие данных — загруженные месяцы</div><div style="display:flex;flex-direction:column;gap:6px">'+rowsH+'</div></div>';
-  })();
+  var calHTML = '';
+  var covered = {};
+  salesReports.forEach(function(r) {
+    var from = new Date(r.dateFrom + 'T00:00:00');
+    var to   = new Date(r.dateTo   + 'T00:00:00');
+    var d    = new Date(from.getFullYear(), from.getMonth(), 1);
+    while (d <= to) {
+      var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      covered[key] = r.label;
+      d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    }
+  });
+  var coveredKeys = Object.keys(covered);
+  if (coveredKeys.length) {
+    var MO = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+    var yearsSet = {};
+    coveredKeys.forEach(function(k) { yearsSet[k.slice(0,4)] = 1; });
+    var years = Object.keys(yearsSet).sort();
+    var rowsH = years.map(function(y) {
+      var cells = MO.map(function(mn, mi) {
+        var k2 = y + '-' + String(mi + 1).padStart(2, '0');
+        var has = covered[k2];
+        var bg  = has ? 'var(--acb)' : 'var(--s2)';
+        var col = has ? 'var(--ac)'  : 'var(--bdl)';
+        var brd = has ? 'var(--acbd)': 'var(--bd)';
+        var tip = has ? covered[k2] : mn + ' ' + y;
+        return '<span title="' + tip + '" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:22px;border-radius:4px;font-size:9px;font-family:IBM Plex Mono;font-weight:600;background:' + bg + ';color:' + col + ';border:1px solid ' + brd + '">' + mn + '</span>';
+      }).join('');
+      return '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap"><span style="font-size:9px;font-family:IBM Plex Mono;color:var(--m);min-width:34px">' + y + '</span>' + cells + '</div>';
+    }).join('');
+    calHTML = '<div style="background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:10px 14px;margin-bottom:14px">'
+      + '<div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--m);margin-bottom:8px">Покрытие данных</div>'
+      + '<div style="display:flex;flex-direction:column;gap:6px">' + rowsH + '</div></div>';
+  }
 
-  const repListH = salesReports.map(r => {
-    const sel = salesPeriod==='custom' && salesCustomSel.has(r.id);
-    const inf = salesPeriod!=='custom' && filtered.find(f => f.id===r.id);
-    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;background:'+(sel||inf?'var(--acb)':'transparent')+';border:1px solid '+(sel||inf?'var(--acbd)':'transparent')+';cursor:'+(salesPeriod==='custom'?'pointer':'default')+'" onclick="'+(salesPeriod==='custom'?'toggleSalesCustom('+r.id+')'||'':'')+'">'
-      +'<span style="font-size:10px;font-weight:600;font-family:\'IBM Plex Mono\';color:var(--td)">'+r.label+'</span>'
-      +'<span style="font-size:9px;color:var(--m)">'+r.dateFrom+' → '+r.dateTo+'</span>'
-      +'<span style="font-size:9px;color:var(--m);margin-left:auto">$'+(r.totals&&r.totals.revenue?r.totals.revenue.toFixed(0):'0')+'</span>'
-      +'<button onclick="event.stopPropagation();deleteSalesReport('+r.id+')" style="background:none;border:none;cursor:pointer;color:var(--m);font-size:11px;padding:2px 4px" title="Удалить">✕</button></div>';
+  // Reports list
+  var repListH = salesReports.map(function(r) {
+    var sel = salesPeriod === 'custom' && salesCustomSel.has(r.id);
+    var inf = salesPeriod !== 'custom' && filtered.some(function(f) { return f.id === r.id; });
+    var bg  = (sel || inf) ? 'var(--acb)' : 'transparent';
+    var brd = (sel || inf) ? 'var(--acbd)' : 'transparent';
+    var onclk = salesPeriod === 'custom' ? 'toggleSalesCustom(' + r.id + ')' : '';
+    var rev = r.totals && r.totals.revenue ? r.totals.revenue.toFixed(0) : '0';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;background:' + bg + ';border:1px solid ' + brd + ';cursor:' + (salesPeriod === 'custom' ? 'pointer' : 'default') + '" onclick="' + onclk + '">'
+      + '<span style="font-size:10px;font-weight:600;font-family:IBM Plex Mono;color:var(--td)">' + r.label + '</span>'
+      + '<span style="font-size:9px;color:var(--m)">' + r.dateFrom + ' → ' + r.dateTo + '</span>'
+      + '<span style="font-size:9px;color:var(--m);margin-left:auto">$' + rev + '</span>'
+      + '<button onclick="event.stopPropagation();deleteSalesReport(' + r.id + ')" style="background:none;border:none;cursor:pointer;color:var(--m);font-size:11px;padding:2px 4px">×</button></div>';
   }).join('');
 
-  const totalPages = Math.max(1, Math.ceil(items.length / SALES_PS));
+  // Pagination
+  var totalPages = Math.max(1, Math.ceil(items.length / SALES_PS));
   if (salesPage > totalPages) salesPage = totalPages;
-  const pageItems = items.slice((salesPage-1)*SALES_PS, salesPage*SALES_PS);
-  const pagH = totalPages > 1 ? '<div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:12px"><button class="sr-tb" onclick="salesPage=Math.max(1,salesPage-1);sR=false;renderSalesTab()" '+(salesPage<=1?'disabled':'')+'>←</button><span style="font-size:10px;color:var(--m)">'+salesPage+' / '+totalPages+'</span><button class="sr-tb" onclick="salesPage=Math.min('+totalPages+',salesPage+1);sR=false;renderSalesTab()" '+(salesPage>=totalPages?'disabled':'')+'>→</button></div>' : '';
+  var pageItems = items.slice((salesPage - 1) * SALES_PS, salesPage * SALES_PS);
+  var pagH = '';
+  if (totalPages > 1) {
+    pagH = '<div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:12px">'
+      + '<button class="sr-tb" onclick="salesPage=Math.max(1,salesPage-1);sR=false;renderSalesTab()" ' + (salesPage <= 1 ? 'disabled' : '') + '>←</button>'
+      + '<span style="font-size:10px;color:var(--m)">' + salesPage + ' / ' + totalPages + '</span>'
+      + '<button class="sr-tb" onclick="salesPage=Math.min(' + totalPages + ',salesPage+1);sR=false;renderSalesTab()" ' + (salesPage >= totalPages ? 'disabled' : '') + '>→</button></div>';
+  }
 
-  const rowsH = pageItems.length ? pageItems.map((it,idx) => {
-    const barW = Math.round((salesSortTable==='units' ? it.units/maxUnits : it.revenue/maxRev)*100);
-    const asinLink = it.asin
-      ? '<a href="https://www.amazon.com/dp/'+it.asin+'" target="_blank" style="color:var(--ac);text-decoration:none;font-family:\'IBM Plex Mono\';font-size:9px;white-space:nowrap">'+it.asin+'</a>'
-      : '<span style="color:var(--bdl);font-size:9px">—</span>';
-    return '<tr>'
-      +'<td style="color:var(--m);font-family:\'IBM Plex Mono\';font-size:9px">'+((salesPage-1)*SALES_PS+idx+1)+'</td>'
-      +'<td style="max-width:240px;word-break:break-word">'+(it.title||'—')+'</td>'
-      +'<td style="white-space:nowrap">'+asinLink+'</td>'
-      +'<td><span style="font-size:9px;padding:2px 7px;border-radius:4px;background:var(--s2);border:1px solid var(--bd);color:var(--m);white-space:nowrap">'+it.category+'</span></td>'
-      +'<td style="font-family:\'IBM Plex Mono\';text-align:right;white-space:nowrap">$'+it.revenue.toFixed(2)+'</td>'
-      +'<td style="font-family:\'IBM Plex Mono\';text-align:right">'+it.units+'</td>'
-      +'<td style="font-family:\'IBM Plex Mono\';text-align:right">'+(it.sessions||0)+'</td>'
-      +'<td class="bar-cell"><div class="sbar" style="width:'+barW+'%"></div></td></tr>';
-  }).join('') : '<tr><td colspan="8" class="no-sales-data">Нет данных за выбранный период</td></tr>';
+  // Table rows
+  var rowsH = '';
+  if (!pageItems.length) {
+    rowsH = '<tr><td colspan="8" class="no-sales-data">Нет данных за выбранный период</td></tr>';
+  } else {
+    pageItems.forEach(function(it, idx) {
+      var barW = Math.round((salesSortTable === 'units' ? it.units / maxUnits : it.revenue / maxRev) * 100);
+      var asinLink = it.asin
+        ? '<a href="https://www.amazon.com/dp/' + it.asin + '" target="_blank" style="color:var(--ac);text-decoration:none;font-family:IBM Plex Mono;font-size:9px;white-space:nowrap">' + it.asin + '</a>'
+        : '<span style="color:var(--bdl);font-size:9px">—</span>';
+      rowsH += '<tr>'
+        + '<td style="color:var(--m);font-family:IBM Plex Mono;font-size:9px">' + ((salesPage - 1) * SALES_PS + idx + 1) + '</td>'
+        + '<td style="max-width:240px;word-break:break-word">' + (it.title || '—') + '</td>'
+        + '<td style="white-space:nowrap">' + asinLink + '</td>'
+        + '<td><span style="font-size:9px;padding:2px 7px;border-radius:4px;background:var(--s2);border:1px solid var(--bd);color:var(--m);white-space:nowrap">' + it.category + '</span></td>'
+        + '<td style="font-family:IBM Plex Mono;text-align:right;white-space:nowrap">$' + it.revenue.toFixed(2) + '</td>'
+        + '<td style="font-family:IBM Plex Mono;text-align:right">' + it.units + '</td>'
+        + '<td style="font-family:IBM Plex Mono;text-align:right">' + (it.sessions || 0) + '</td>'
+        + '<td class="bar-cell"><div class="sbar" style="width:' + barW + '%"></div></td>'
+        + '</tr>';
+    });
+  }
 
-  const cats = [...new Set([...aggMap.values()].map(i => i.category))].sort();
-  const catOpts = ['', ...cats].map(cc => '<option value="'+cc+'" '+(salesCatFilter===cc?'selected':'')+'>'+(cc||'Все категории')+'</option>').join('');
+  // Category filter options
+  var catsSet = {};
+  Object.values(aggMap).forEach(function(i) { catsSet[i.category] = 1; });
+  var cats = Object.keys(catsSet).sort();
+  var catOpts = '<option value="">Все категории</option>';
+  cats.forEach(function(cc) {
+    catOpts += '<option value="' + cc + '"' + (salesCatFilter === cc ? ' selected' : '') + '>' + cc + '</option>';
+  });
+
+  var sortRevLbl = 'По выручке' + (salesSortTable === 'revenue' ? (salesSortDir === 'desc' ? ' ↓' : ' ↑') : '');
+  var sortUnLbl  = 'По продажам' + (salesSortTable === 'units'   ? (salesSortDir === 'desc' ? ' ↓' : ' ↑') : '');
 
   c.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
-    +'<div><h2>Sales Analytics</h2><div style="color:var(--m);font-size:11px">'+filtered.length+' отчёт(ов) · '+items.length+' товаров</div></div>'
-    +'<button class="sm-btn primary" onclick="openSalesModal()">+ Upload Report</button></div>'
-    +calHTML
-    +'<div class="period-sel"><span style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--m)">Период:</span>'
-    +'<button class="psb '+(salesPeriod==='1m'?'on':'')+'" onclick="setSalesPeriod(\'1m\')">1 месяц</button>'
-    +'<button class="psb '+(salesPeriod==='3m'?'on':'')+'" onclick="setSalesPeriod(\'3m\')">3 месяца</button>'
-    +'<button class="psb '+(salesPeriod==='6m'?'on':'')+'" onclick="setSalesPeriod(\'6m\')">6 месяцев</button>'
-    +'<button class="psb '+(salesPeriod==='1y'?'on':'')+'" onclick="setSalesPeriod(\'1y\')">1 год</button>'
-    +'<button class="psb '+(salesPeriod==='all'?'on':'')+'" onclick="setSalesPeriod(\'all\')">Всё время</button>'
-    +'<button class="psb '+(salesPeriod==='custom'?'on':'')+'" onclick="setSalesPeriod(\'custom\')">Выбрать отчёты</button></div>'
-    +'<div style="background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:10px 14px;margin-bottom:14px"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--m);margin-bottom:8px">Загруженные отчёты</div><div style="display:flex;flex-direction:column;gap:3px">'+repListH+'</div></div>'
-    +'<div class="sales-kpi">'
-    +'<div class="skpi"><div class="skpi-label">Выручка</div><div class="skpi-val">$'+totRev.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div><div class="skpi-sub">'+filtered.length+' отч.</div></div>'
-    +'<div class="skpi"><div class="skpi-label">Продажи</div><div class="skpi-val">'+totUnits.toLocaleString()+'</div><div class="skpi-sub">единиц</div></div>'
-    +'<div class="skpi"><div class="skpi-label">Сессии</div><div class="skpi-val">'+totSess.toLocaleString()+'</div><div class="skpi-sub">page sessions</div></div>'
-    +'<div class="skpi"><div class="skpi-label">Конверсия</div><div class="skpi-val">'+avgCV.toFixed(1)+'%</div><div class="skpi-sub">unit/session</div></div>'
-    +'<div class="skpi"><div class="skpi-label">Товаров</div><div class="skpi-val">'+items.length+'</div><div class="skpi-sub">с продажами</div></div>'
-    +'</div>'
-    +'<div class="sr-tabs">'
-    +'<button class="sr-tb '+(salesSortTable==='revenue'?'on':'')+'" onclick="setSalesSort(\'revenue\')">По выручке '+(salesSortTable==='revenue'?(salesSortDir==='desc'?'↓':'↑'):'')+'</button>'
-    +'<button class="sr-tb '+(salesSortTable==='units'?'on':'')+'" onclick="setSalesSort(\'units\')">По продажам '+(salesSortTable==='units'?(salesSortDir==='desc'?'↓':'↑'):'')+'</button>'
-    +'<input class="sr-search" type="text" placeholder="Поиск по названию или ASIN…" value="'+salesSearch.replace(/"/g,'&quot;')+'" oninput="salesSearch=this.value;salesPage=1;sR=false;renderSalesTab()">'
-    +'<select class="sr-cat" onchange="salesCatFilter=this.value;salesPage=1;sR=false;renderSalesTab()">'+catOpts+'</select></div>'
-    +'<table class="sales-top-table"><thead><tr>'
-    +'<th>#</th><th>Название</th><th>ASIN</th><th>Категория</th>'
-    +'<th style="text-align:right">Выручка</th><th style="text-align:right">Ед.</th>'
-    +'<th style="text-align:right">Сессии</th><th style="min-width:80px">Доля</th>'
-    +'</tr></thead><tbody>'+rowsH+'</tbody></table>'+pagH;
+    + '<div><h2>Sales Analytics</h2><div style="color:var(--m);font-size:11px">' + filtered.length + ' отч. · ' + items.length + ' товаров</div></div>'
+    + '<button class="sm-btn primary" onclick="openSalesModal()">+ Upload Report</button></div>'
+    + calHTML
+    + '<div class="period-sel"><span style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--m)">Период:</span>'
+    + '<button class="psb' + (salesPeriod==='1m' ?' on':'') + '" onclick="setSalesPeriod(\'1m\')">1 месяц</button>'
+    + '<button class="psb' + (salesPeriod==='3m' ?' on':'') + '" onclick="setSalesPeriod(\'3m\')">3 месяца</button>'
+    + '<button class="psb' + (salesPeriod==='6m' ?' on':'') + '" onclick="setSalesPeriod(\'6m\')">6 месяцев</button>'
+    + '<button class="psb' + (salesPeriod==='1y' ?' on':'') + '" onclick="setSalesPeriod(\'1y\')">1 год</button>'
+    + '<button class="psb' + (salesPeriod==='all'?' on':'') + '" onclick="setSalesPeriod(\'all\')">Всё время</button>'
+    + '<button class="psb' + (salesPeriod==='custom'?' on':'') + '" onclick="setSalesPeriod(\'custom\')">Выбрать отчёты</button></div>'
+    + '<div style="background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:10px 14px;margin-bottom:14px">'
+    + '<div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--m);margin-bottom:8px">Загруженные отчёты</div>'
+    + '<div style="display:flex;flex-direction:column;gap:3px">' + repListH + '</div></div>'
+    + '<div class="sales-kpi">'
+    + '<div class="skpi"><div class="skpi-label">Выручка</div><div class="skpi-val">$' + totRev.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}) + '</div><div class="skpi-sub">' + filtered.length + ' отч.</div></div>'
+    + '<div class="skpi"><div class="skpi-label">Продажи</div><div class="skpi-val">' + totUnits.toLocaleString() + '</div><div class="skpi-sub">единиц</div></div>'
+    + '<div class="skpi"><div class="skpi-label">Сессии</div><div class="skpi-val">' + totSess.toLocaleString() + '</div><div class="skpi-sub">page sessions</div></div>'
+    + '<div class="skpi"><div class="skpi-label">Конверсия</div><div class="skpi-val">' + avgCV.toFixed(1) + '%</div><div class="skpi-sub">unit/session</div></div>'
+    + '<div class="skpi"><div class="skpi-label">Товаров</div><div class="skpi-val">' + items.length + '</div><div class="skpi-sub">с продажами</div></div>'
+    + '</div>'
+    + '<div class="sr-tabs">'
+    + '<button class="sr-tb' + (salesSortTable==='revenue'?' on':'') + '" onclick="setSalesSort(\'revenue\')">' + sortRevLbl + '</button>'
+    + '<button class="sr-tb' + (salesSortTable==='units'  ?' on':'') + '" onclick="setSalesSort(\'units\')">'   + sortUnLbl  + '</button>'
+    + '<input class="sr-search" type="text" placeholder="Поиск по названию или ASIN" id="sr-search-input" value="" id="sr-search-input" oninput="salesSearch=this.value;salesPage=1;sR=false;renderSalesTab()">'
+    + '<select class="sr-cat" onchange="salesCatFilter=this.value;salesPage=1;sR=false;renderSalesTab()">' + catOpts + '</select></div>'
+    + '<table class="sales-top-table"><thead><tr>'
+    + '<th>#</th><th>Название</th><th>ASIN</th><th>Категория</th>'
+    + '<th style="text-align:right">Выручка</th>'
+    + '<th style="text-align:right">Ед.</th>'
+    + '<th style="text-align:right">Сессии</th>'
+    + '<th style="min-width:80px">Доля</th>'
+    + '</tr></thead><tbody>' + rowsH + '</tbody></table>' + pagH;
+  var srInp = document.getElementById('sr-search-input');
+  if (srInp) srInp.value = salesSearch;
 }
 
 </script>
